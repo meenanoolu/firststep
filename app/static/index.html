@@ -1,0 +1,160 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>FirstStep</title>
+<style>
+  :root{--bg:#fafaf7;--fg:#1c1c1a;--mut:#6b6b64;--card:#fff;--bd:#dcdcd2;--ac:#2f6f4f;--bad:#a8402f;--code:#f1f1ea}
+  @media (prefers-color-scheme:dark){:root{--bg:#161715;--fg:#ecece4;--mut:#9a9a90;--card:#202220;--bd:#34362f;--ac:#7fc79f;--bad:#e58a77;--code:#262823}}
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--fg);font:16px/1.5 system-ui,sans-serif}
+  main{max-width:820px;margin:0 auto;padding:16px}
+  h1{font-size:1.4rem;margin:.2rem 0}h2{font-size:1.1rem;margin:.2rem 0 .6rem}
+  .sub{color:var(--mut);margin:0 0 1rem}
+  .card{background:var(--card);border:1px solid var(--bd);border-radius:10px;padding:14px;margin:12px 0}
+  button{font:inherit;padding:8px 14px;border-radius:8px;border:1px solid var(--bd);background:var(--card);color:var(--fg);cursor:pointer}
+  button.primary{background:var(--ac);color:#fff;border-color:var(--ac)}
+  button:disabled{opacity:.5;cursor:default}
+  textarea,select,input{font:inherit;width:100%;padding:8px;border-radius:8px;border:1px solid var(--bd);background:var(--card);color:var(--fg)}
+  textarea.code{font-family:ui-monospace,monospace;font-size:14px;min-height:220px}
+  pre{background:var(--code);padding:10px;border-radius:8px;overflow:auto;margin:6px 0}
+  .row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+  .tag{font-size:.8rem;color:var(--mut)}.bad{color:var(--bad)}.ok{color:var(--ac)}
+  .hidden{display:none}
+  .due{border-left:4px solid var(--ac)}
+  small{color:var(--mut)}
+</style>
+</head>
+<body>
+<main>
+  <h1>FirstStep</h1>
+  <p class="sub">Learn to start from scratch. Practice tool, not for live contests: it never gives you the solution.</p>
+
+  <p id="pay" hidden><a id="payLink" target="_blank" rel="noopener"></a></p>
+  <div id="home">
+    <div class="card" id="dueBox" hidden><h2>Closed-book re-solves due</h2><div id="dueList"></div></div>
+    <div class="card"><h2>Pick a problem</h2><div id="plist"></div></div>
+    <div class="card"><h2>Your numbers</h2><div id="stats" class="tag">Nothing yet.</div></div>
+  </div>
+
+  <div id="work" hidden>
+    <div class="card"><h2 id="ptitle"></h2><div id="pbody"></div></div>
+
+    <div class="card" id="stepBox">
+      <h2>Step 0: before any code</h2>
+      <p>In one or two sentences: how would you start? (No code. A small example, a try-everything idea, or or one thing you would keep track of.)</p>
+      <textarea id="stepText" rows="3" maxlength="600"></textarea>
+      <div class="row" style="margin-top:8px"><button class="primary" id="stepBtn">Check my first step</button><span id="stepOut"></span></div>
+    </div>
+
+    <div class="card" id="codeBox" hidden>
+      <h2 id="codeTitle">Your code</h2>
+      <div class="row" style="margin-bottom:8px">
+        <select id="lang" style="width:auto"><option value="cpp">C++</option><option value="python">Python</option></select>
+        <small>Reads stdin, prints stdout.</small>
+      </div>
+      <textarea class="code" id="code" spellcheck="false"></textarea>
+      <div class="row" style="margin-top:8px">
+        <button class="primary" id="runBtn">Find a failing input</button>
+        <button id="hintBtn">Hint (<span id="hintN">0</span>/4)</button>
+        <button id="doneBtn">I solved it</button>
+        <button id="giveBtn">I'm stuck, end session</button>
+      </div>
+      <div id="result"></div>
+      <div id="hints"></div>
+    </div>
+
+    <div class="card" id="endBox" hidden></div>
+    <button id="back">Back to problems</button>
+  </div>
+</main>
+<script>
+const $=id=>document.getElementById(id);
+let learner;
+try{learner=localStorage.getItem('fs_learner')}catch(e){}
+if(!learner){learner='l-'+Math.random().toString(36).slice(2,12);try{localStorage.setItem('fs_learner',learner)}catch(e){}}
+let sid=null;
+const esc=s=>String(s).replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));
+async function api(path,method='GET',body){
+  const r=await fetch(path,{method,headers:{'Content-Type':'application/json'},body:body?JSON.stringify(body):undefined});
+  const j=await r.json().catch(()=>({}));
+  if(!r.ok) throw new Error(j.detail||('Error '+r.status));
+  return j;
+}
+const TPL={cpp:'#include <bits/stdc++.h>\nusing namespace std;\nint main(){\n    ios::sync_with_stdio(false);cin.tie(nullptr);\n    \n}\n',python:'import sys\ndata = sys.stdin.read().split()\n'};
+$('lang').onchange=()=>{const c=$('code').value.trim();if(!c||c===TPL.cpp.trim()||c===TPL.python.trim())$('code').value=TPL[$('lang').value]};
+api('/api/config').then(c=>{if(c.payment_url){$('pay').hidden=false;$('payLink').href=c.payment_url;$('payLink').textContent=c.payment_label}}).catch(()=>{});
+async function home(){
+  $('home').hidden=false;$('work').hidden=true;
+  const ps=await api('/api/problems');
+  $('plist').innerHTML=ps.map(p=>`<div class="row" style="justify-content:space-between;margin:6px 0"><span>${esc(p.title)} <span class="tag">level ${p.difficulty} · ${p.tags.join(', ')}</span></span><button data-p="${p.id}">Start</button></div>`).join('');
+  $('plist').querySelectorAll('button').forEach(b=>b.onclick=()=>start(b.dataset.p));
+  const d=await api('/api/reviews/due?learner='+learner);
+  $('dueBox').hidden=!d.due.length;
+  $('dueList').innerHTML=d.due.map(r=>`<div class="row due card" style="margin:6px 0"><span>${esc(r.problem_id)} (round ${r.stage+1})</span><button class="primary" data-p="${r.problem_id}" data-r="${r.id}">Re-solve closed-book</button></div>`).join('');
+  $('dueList').querySelectorAll('button').forEach(b=>b.onclick=()=>start(b.dataset.p,+b.dataset.r));
+  const s=(await api('/api/stats?learner='+learner)).learner;
+  if(s.sessions){
+    $('stats').innerHTML=`Sessions: ${s.sessions} (finished ${s.finished}). Avg hints: ${s.avg_hints??'-'}. Re-solves done: ${s.reviews_done}. Unaided restart rate: ${s.unaided_restart_rate??'-'}.`;
+  }
+}
+async function start(pid,review){
+  const p=await api('/api/problems/'+pid);
+  const s=await api('/api/sessions','POST',{learner,problem_id:pid,review_id:review||null});
+  sid=s.session_id;
+  $('home').hidden=true;$('work').hidden=false;
+  $('ptitle').textContent=p.title+(review?' (closed-book re-solve)':'');
+  $('pbody').innerHTML=`<p>${esc(p.statement)}</p><p><b>Input:</b> ${esc(p.input_format)}<br><b>Output:</b> ${esc(p.output_format)}<br><b>Limits:</b> ${esc(p.constraints)}</p>`+
+    p.samples.map(x=>`<div class="row" style="align-items:flex-start"><div style="flex:1"><small>Sample input</small><pre>${esc(x.input)}</pre></div><div style="flex:1"><small>Sample output</small><pre>${esc(x.output)}</pre></div></div>`).join('');
+  ['stepOut','result','hints'].forEach(i=>$(i).innerHTML='');
+  $('stepText').value='';$('code').value=TPL[$('lang').value];$('hintN').textContent='0';
+  $('stepBox').hidden=false;$('codeBox').hidden=true;$('endBox').hidden=true;
+  $('hintBtn').disabled=false;$('runBtn').disabled=false;$('doneBtn').disabled=false;$('giveBtn').disabled=false;
+}
+$('stepBtn').onclick=async()=>{
+  try{
+    const t=$('stepText').value.trim(); if(!t) return;
+    const r=await api(`/api/sessions/${sid}/first-step`,'POST',{text:t});
+    $('stepOut').innerHTML=`<span class="${r.viable?'ok':'bad'}">${esc(r.feedback)}</span>`;
+    if(r.viable) $('codeBox').hidden=false;
+  }catch(e){$('stepOut').textContent=e.message}
+};
+$('runBtn').onclick=async()=>{
+  $('runBtn').disabled=true;$('result').innerHTML='Running...';
+  try{
+    const r=await api(`/api/sessions/${sid}/submit`,'POST',{language:$('lang').value,code:$('code').value});
+    let h='';
+    if(r.status==='found') h=`<p class="bad"><b>Found a failing input</b> (smallest I could reduce it to, ${r.tests_run} runs):</p><pre>${esc(r.input)}</pre><p>Expected: <b>${esc(r.expected)}</b> &nbsp; Your program: <b>${esc(r.got||'(nothing)')}</b> ${r.verdict!=='OK'?'('+r.verdict+')':''}</p><p>${esc(r.explanation)}</p>`;
+    else if(r.status==='fails_sample') h=`<p class="bad"><b>Fails a sample.</b></p><pre>${esc(r.input)}</pre><p>Expected: <b>${esc(r.expected)}</b> &nbsp; Yours: <b>${esc(r.got||'(nothing)')}</b></p>`;
+    else if(r.status==='cannot_run') h=`<p class="bad"><b>${esc(r.verdict)}:</b> ${esc(r.detail)}</p>`;
+    else h=`<p class="ok">${esc(r.note)}</p>`;
+    $('result').innerHTML=h;
+  }catch(e){$('result').innerHTML=`<p class="bad">${esc(e.message)}</p>`}
+  $('runBtn').disabled=false;
+};
+$('hintBtn').onclick=async()=>{
+  try{
+    const r=await api(`/api/sessions/${sid}/hint`,'POST');
+    $('hintN').textContent=r.level;
+    $('hints').innerHTML+=`<p><b>Hint ${r.level}:</b> ${esc(r.text)} <small>(${r.source==='model'?'reworded by the open model, leak-checked':'written by hand'})</small></p>`;
+  }catch(e){$('hints').innerHTML+=`<p class="bad">${esc(e.message)}</p>`}
+};
+async function finish(solved){
+  try{
+    const r=await api(`/api/sessions/${sid}/finish`,'POST',{solved});
+    const prof=Object.entries(r.mistake_profile||{});
+    $('endBox').hidden=false;
+    $('endBox').innerHTML=`<h2>Session done: ${esc(r.outcome.replace('_',' '))}</h2>`+
+      (r.next_review_in_days!=null?`<p>Come back in ${r.next_review_in_days} day(s) and solve it again with no notes.</p>`:'<p>You finished the whole ladder for this problem.</p>')+
+      (prof.length?`<p><b>Where your code tends to break:</b> ${prof.map(([k,v])=>esc(k.replace(/_/g,' '))+' ('+v+')').join(', ')}</p>`:'');
+    ['hintBtn','runBtn','doneBtn','giveBtn'].forEach(i=>$(i).disabled=true);
+  }catch(e){$('result').innerHTML=`<p class="bad">${esc(e.message)}</p>`}
+}
+$('doneBtn').onclick=()=>finish(true);
+$('giveBtn').onclick=()=>finish(false);
+$('back').onclick=home;
+home();
+</script>
+</body>
+</html>
