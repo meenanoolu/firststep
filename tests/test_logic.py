@@ -63,3 +63,8 @@ def test_first_step_model_label_must_be_valid():
     class Bad:
         def judge_first_step(self, s, t): return "genius"
     assert firststep.judge(P.statement, "ok", Bad())["source"] == "rules"
+
+def test_concrete_numbers_count_as_small_example():
+    t = "for l=2 and r=4, i would add a[l] to sum then a[l+1] to sum and till a[r] to sum"
+    r = firststep.judge(PROBLEMS["range-sum-queries"].statement, t)
+    assert r["viable"] and r["category"] == "small_example"

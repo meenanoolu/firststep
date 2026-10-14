@@ -10,7 +10,8 @@ VIABLE = {"brute_force", "small_example", "observation"}
 
 _W = re.compile(r"[a-z0-9]+")
 _BRUTE = ("try all", "every pair", "all pairs", "all subarrays", "every subarray", "brute", "nested loop",
-          "check every", "check all", "every possible", "each pair", "all possible", "two loops")
+          "check every", "check all", "every possible", "each pair", "all possible", "two loops",
+          "one by one", "go through", "iterate", "walk through", "add each", "add all")
 _EXAMPLE = ("example", "for instance", "e.g", "small case", "tiny case", "by hand", "let's say", "suppose")
 _OBS = ("notice", "observe", "keep track", "track", "running", "remember", "store", "because", "depends on",
         "only need", "so that")
@@ -35,7 +36,7 @@ def classify_rules(statement: str, text: str) -> str:
         return "restate"
     if any(k in low for k in _BRUTE):
         return "brute_force"
-    if any(k in low for k in _EXAMPLE):
+    if any(k in low for k in _EXAMPLE) or len(re.findall(r"\d+", low)) >= 2:
         return "small_example"
     if any(k in low for k in _OBS):
         return "observation"
