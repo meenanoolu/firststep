@@ -1,0 +1,25 @@
+services:
+  - type: web
+    name: firststep
+    runtime: docker
+    plan: starter            # persistent disks need a paid instance; free tier works without the disk (data resets)
+    healthCheckPath: /api/health
+    disk:
+      name: data
+      mountPath: /data
+      sizeGB: 1
+    envVars:
+      - key: DB_PATH
+        value: /data/firststep.db
+      - key: MAX_CONCURRENT_RUNS
+        value: "2"
+      - key: MAX_SUBMITS_PER_DAY
+        value: "60"
+      - key: LLM_PROVIDER
+        value: none           # set to openai + LLM_BASE_URL/LLM_MODEL to use a hosted open model
+      - key: LLM_BASE_URL
+        sync: false
+      - key: LLM_API_KEY
+        sync: false
+      - key: LLM_MODEL
+        sync: false
