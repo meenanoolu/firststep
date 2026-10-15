@@ -12,4 +12,9 @@ PITFALLS = [
 ("range-sum-queries", "single-position query returns 0", "n,q=map(int,input().split());a=list(map(int,input().split()))\nfor _ in range(q):\n    l,r=map(int,input().split())\n    print(sum(a[l-1:r]) if l<r else 0)\n", "single_element_query"),
 ("second-largest-distinct", "sorted[-2] keeps duplicates", "n=int(input());a=sorted(map(int,input().split()))\nprint(a[-2] if n>1 else 'NONE')\n", "max_repeated"),
 ("second-largest-distinct", "init second=0", "n=int(input());a=list(map(int,input().split()))\nm=max(a);s=0\nfor x in a:\n    if x<m: s=max(s,x)\nprint(s if s else 'NONE')\n", None),
+("longest-fresh-stretch", "start moves backwards", "n=int(input());a=list(map(int,input().split()))\nlast={};l=0;b=0\nfor i,x in enumerate(a):\n    if x in last:\n        l=last[x]+1\n    last[x]=i\n    b=max(b,i-l+1)\nprint(b)\n", "stale_repeat"),
+("longest-fresh-stretch", "reports only the last block", "n=int(input());a=list(map(int,input().split()))\nseen=set();l=0\nfor r in range(n):\n    while a[r] in seen:\n        seen.remove(a[l]);l+=1\n    seen.add(a[r])\nprint(len(seen))\n", "best_not_at_end"),
+("longest-fresh-stretch", "counts distinct values overall", "n=int(input());a=list(map(int,input().split()))\nprint(len(set(a)))\n", None),
+("exact-target-blocks", "forgets the empty prefix", "n,k=map(int,input().split());a=list(map(int,input().split()))\nseen={};s=0;t=0\nfor x in a:\n    s+=x\n    t+=seen.get(s-k,0)\n    seen[s]=seen.get(s,0)+1\nprint(t)\n", "starts_at_first"),
+("exact-target-blocks", "window assumes positive numbers", "n,k=map(int,input().split());a=list(map(int,input().split()))\nl=s=t=0\nfor r in range(n):\n    s+=a[r]\n    while s>k and l<=r:\n        s-=a[l];l+=1\n    if s==k:t+=1\nprint(t)\n", None),
 ]

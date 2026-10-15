@@ -29,12 +29,13 @@ class Problem:
     rubric: str                           # what a viable first step looks like
     spoilers: dict                        # term -> minimum hint level at which it may appear
     reference_src: str                    # python reference, used by leak check (5-gram overlap)
+    tier: str = "free"                    # "free" or "pro" (paid pack, locked until a code is redeemed)
 
     def public(self) -> dict:
         return {
             "id": self.id, "title": self.title, "difficulty": self.difficulty, "tags": list(self.tags),
             "statement": self.statement, "input_format": self.input_format,
-            "output_format": self.output_format, "constraints": self.constraints,
+            "output_format": self.output_format, "constraints": self.constraints, "tier": self.tier,
             "samples": [{"input": i, "output": o} for i, o in self.samples],
         }
 

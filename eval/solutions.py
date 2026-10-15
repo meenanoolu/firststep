@@ -55,4 +55,25 @@ a = list(map(int, input().split()))
 d = sorted(set(a))
 print(d[-2] if len(d) >= 2 else 'NONE')
 """,
+"longest-fresh-stretch": """n = int(input())
+a = list(map(int, input().split()))
+last = {}
+left = best = 0
+for i, x in enumerate(a):
+    if x in last:
+        left = max(left, last[x] + 1)
+    last[x] = i
+    best = max(best, i - left + 1)
+print(best)
+""",
+"exact-target-blocks": """n, k = map(int, input().split())
+a = list(map(int, input().split()))
+seen = {0: 1}
+s = t = 0
+for x in a:
+    s += x
+    t += seen.get(s - k, 0)
+    seen[s] = seen.get(s, 0) + 1
+print(t)
+""",
 }

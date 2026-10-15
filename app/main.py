@@ -35,6 +35,10 @@ EXPLAIN = {
     "unclosed_opener": "Everything seems to match, but something is left open at the end. Check your final step.",
     "odd_length": "The string has odd length, so it cannot be balanced. Check your final answer.",
     "query_starts_at_1": "A query starts at position 1. Check the index you use for 'everything before'.",
+    "stale_repeat": "A value repeats here, but its earlier copy is already outside your current block. Check how your code moves the start of the block.",
+    "best_not_at_end": "The longest block is not the last one. Check when your code records the best length.",
+    "has_negative": "A negative number is involved. Check any step that assumes the running sum only grows.",
+    "starts_at_first": "A block that starts at the very first number matters here. Check what your code counts before it has seen anything.",
     "single_element_query": "A query covers one position only. Trace it by hand.",
 }
 
