@@ -195,7 +195,7 @@ def create_app(settings: Settings | None = None, llm="auto") -> FastAPI:
 
     @app.get("/api/report")
     def report(learner: str, tz: int = 0):
-        """Per-learner progress report (what a coach shares with a student). tz = minutes east of UTC."""
+        """Per-learner progress report (what a learner shares with a friend or mentor). tz = minutes east of UTC."""
         tz = max(-840, min(840, tz))
         return metrics.learner_report(st, learner, {k: v.title for k, v in PROBLEMS.items()},
                                       s.review_intervals_days, tz_offset_min=tz)

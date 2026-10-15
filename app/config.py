@@ -45,7 +45,7 @@ class Settings:
     review_intervals_days: tuple[int, ...] = field(default_factory=_intervals)
 
     payment_url: str = field(default_factory=lambda: os.environ.get("PAYMENT_URL", ""))
-    payment_label: str = field(default_factory=lambda: os.environ.get("PAYMENT_LABEL", "Book a 30-min coaching session that uses this tool"))
+    payment_label: str = field(default_factory=lambda: os.environ.get("PAYMENT_LABEL", "Support FirstStep"))
 
     llm_provider: str = field(default_factory=lambda: os.environ.get("LLM_PROVIDER", "none").lower())
     ollama_url: str = field(default_factory=lambda: os.environ.get("OLLAMA_URL", "http://localhost:11434"))
