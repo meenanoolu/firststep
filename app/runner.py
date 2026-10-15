@@ -14,6 +14,7 @@ import signal
 import subprocess
 import sys
 import tempfile
+import textwrap
 from dataclasses import dataclass
 
 OK, RE, TLE, CE, REJECTED = "OK", "RE", "TLE", "CE", "REJECTED"
@@ -117,6 +118,7 @@ class Program:
     @classmethod
     def prepare(cls, language: str, code: str, timeout: float = 2.0) -> "Program":
         language = language.lower()
+        code = textwrap.dedent(code.replace("\r\n", "\n").lstrip("\ufeff")).strip("\n") + "\n"  # pasted code is often indented
         if len(code) > 20_000:
             return cls(language, None, None, REJECTED, "code is too long", timeout)
         if language in ("python", "py", "python3"):
