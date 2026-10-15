@@ -118,21 +118,28 @@ def create_app(settings: Settings | None = None, llm="auto") -> FastAPI:
     def pro_status(learner: str):
         return {"pro": st.is_pro(learner)}
 
+    def locked(p, learner: str) -> bool:
+        return p.tier == "pro" and not (learner and st.is_pro(learner))
+
     @app.get("/api/problems")
-    def problems():
-        return [{k: v for k, v in p.public().items() if k in ("id", "title", "difficulty", "tags")}
-                for p in PROBLEMS.values()]
+    def problems(learner: str = ""):
+        return [{**{k: v for k, v in p.public().items() if k in ("id", "title", "difficulty", "tags", "tier")},
+                 "locked": locked(p, learner)} for p in PROBLEMS.values()]
 
     @app.get("/api/problems/{pid}")
-    def problem(pid: str):
+    def problem(pid: str, learner: str = ""):
         if pid not in PROBLEMS:
             raise HTTPException(404, "no such problem")
+        if locked(PROBLEMS[pid], learner):
+            raise HTTPException(402, "This problem is in the paid pack. Enter your code on the home page.")
         return PROBLEMS[pid].public()
 
     @app.post("/api/sessions")
     def new_session(b: NewSession):
         if b.problem_id not in PROBLEMS:
             raise HTTPException(404, "no such problem")
+        if locked(PROBLEMS[b.problem_id], b.learner):
+            raise HTTPException(402, "This problem is in the paid pack. Enter your code on the home page.")
         if b.review_id is not None:
             rv = st.review(b.review_id)
             if not rv or rv["learner"] != b.learner or rv["done_ts"]:

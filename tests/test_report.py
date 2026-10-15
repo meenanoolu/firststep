@@ -162,3 +162,32 @@ def test_next_up_ranks_by_mistakes_and_skips_mastered():
     plan = pro.next_up({"all_negative": 3}, {}, {"max-subarray": "Best stretch"})
     assert plan and plan[0]["problem_id"] == "max-subarray"
     assert pro.next_up({"all_negative": 3}, {"max-subarray": "mastered"}, {}) == []
+
+
+# ---------------------------------------------------------------- paid problem pack
+def test_pro_problems_are_locked_until_unlocked():
+    c = mk(pro_codes=(CODE,))
+    listing = {p["id"]: p for p in c.get("/api/problems", params={"learner": L}).json()}
+    assert listing["longest-fresh-stretch"]["locked"] and listing["exact-target-blocks"]["locked"]
+    assert not listing["max-subarray"]["locked"]
+    assert c.get("/api/problems/longest-fresh-stretch", params={"learner": L}).status_code == 402
+    assert c.get("/api/problems/longest-fresh-stretch").status_code == 402          # no learner at all
+    assert c.post("/api/sessions", json={"learner": L, "problem_id": "exact-target-blocks"}).status_code == 402
+    assert c.get("/api/problems/max-subarray").status_code == 200                    # free stays free
+    c.post("/api/pro/redeem", json={"learner": L, "code": CODE})
+    assert c.get("/api/problems/longest-fresh-stretch", params={"learner": L}).status_code == 200
+    sid = c.post("/api/sessions", json={"learner": L, "problem_id": "exact-target-blocks"}).json()["session_id"]
+    assert sid
+    other = {p["id"]: p for p in c.get("/api/problems", params={"learner": "other-learner"}).json()}
+    assert other["exact-target-blocks"]["locked"]                                     # unlock is per learner
+
+
+def test_pro_problem_full_session_finds_the_classic_bug():
+    c = mk(pro_codes=(CODE,))
+    c.post("/api/pro/redeem", json={"learner": L, "code": CODE})
+    sid = c.post("/api/sessions", json={"learner": L, "problem_id": "exact-target-blocks"}).json()["session_id"]
+    buggy = ("n,k=map(int,input().split());a=list(map(int,input().split()))\nseen={};s=0;t=0\nfor x in a:\n"
+             "    s+=x\n    t+=seen.get(s-k,0)\n    seen[s]=seen.get(s,0)+1\nprint(t)\n")
+    r = c.post(f"/api/sessions/{sid}/submit", json={"code": buggy}).json()
+    assert r["status"] == "found" and "starts_at_first" in r["features"]
+    assert c.post(f"/api/sessions/{sid}/hint").json()["level"] == 1
