@@ -34,6 +34,13 @@ const q=new URLSearchParams(location.search),learner=q.get('learner')||'',tz=q.g
 const esc=s=>String(s??'').replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));
 const nice=k=>String(k).replace(/_/g,' ');
 document.getElementById('when').textContent=new Date().toLocaleDateString(undefined,{dateStyle:'long'});
+function proHtml(r){
+  if(!r.pro) return `<div class="card"><h2>Full learning report</h2><p class="mut" style="margin:0">Locked. It adds a week-by-week trend, the first steps you wrote, and a practice plan ranked by your recurring mistakes. <a href="/">Unlock it on the home page.</a></p></div>`;
+  const p=r.pro;
+  return `<div class="card"><h2>Practice plan: what to do next</h2>${p.next_up.length?`<table><tr><th>Problem</th><th>Why this one</th></tr>${p.next_up.map(x=>`<tr><td>${esc(x.title)}${x.new?' <small>(new)</small>':''}</td><td>exercises: ${esc(x.because.map(nice).join(', '))}</td></tr>`).join('')}</table>`:'<span class="mut">Not enough failing inputs yet to rank problems. Run more sessions.</span>'}</div>`+
+   `<div class="card"><h2>Week by week</h2><table><tr><th>Week of</th><th>Sessions</th><th>Solved</th><th>Avg hints</th><th>Failing inputs found</th></tr>${p.trend.map(t=>`<tr><td>${esc(t.week_of)}</td><td>${t.sessions}</td><td>${t.solved}</td><td>${t.avg_hints}</td><td>${t.failing_inputs_found}</td></tr>`).join('')}</table></div>`+
+   `<div class="card"><h2>The first steps you wrote</h2>${p.first_steps.length?`<table><tr><th>Problem</th><th>Your sentence</th><th>Judged as</th></tr>${p.first_steps.map(f=>`<tr><td>${esc(f.problem)}</td><td>${esc(f.text)}</td><td>${esc(nice(f.category||'-'))}</td></tr>`).join('')}</table>`:'<span class="mut">None saved yet.</span>'}</div>`;
+}
 fetch('/api/report?learner='+encodeURIComponent(learner)+'&tz='+encodeURIComponent(tz)).then(r=>r.json()).then(r=>{
   if(!r.sessions){document.getElementById('out').textContent='No sessions yet for this learner.';return}
   const kp=(n,l)=>`<div class="kpi"><b>${n}</b><small>${l}</small></div>`;
@@ -42,6 +49,7 @@ fetch('/api/report?learner='+encodeURIComponent(learner)+'&tz='+encodeURICompone
    `<div class="card"><div class="kpis">${kp(r.finished+' / '+r.sessions,'sessions finished')}${kp(r.streak_days,'day streak')}${kp(r.avg_hints??'-','avg hints')}${kp(r.first_step_viable_rate==null?'-':Math.round(r.first_step_viable_rate*100)+'%','first steps judged workable')}${kp(r.unaided_restart_rate==null?'-':Math.round(r.unaided_restart_rate*100)+'%','closed-book re-solves done unaided')}</div></div>`+
    `<div class="card"><h2>Where the code keeps breaking</h2>${prof.length?prof.map(([k,v])=>`<div class="bar"><span class="lab">${esc(nice(k))}</span><span class="trk"><div class="fill" style="width:${100*v/mx}%"></div></span><span>${v}</span></div>`).join(''):'<span class="mut">No failing inputs found yet.</span>'}</div>`+
    `<div class="card"><h2>Problems</h2><table><tr><th>Problem</th><th>Re-solves done</th><th>Status</th></tr>${r.problems.map(p=>`<tr><td>${esc(p.title)}</td><td>${p.rungs_done} / ${p.ladder_len}</td><td>${p.status==='waiting'?'next in '+Math.ceil(p.next_due_days)+' day(s)':nice(p.status)}</td></tr>`).join('')}</table></div>`+
+   proHtml(r)+
    `<div class="card"><h2>Recent sessions</h2><table><tr><th>Problem</th><th>First step</th><th>Hints</th><th>Outcome</th><th>Broke on</th></tr>${r.history.map(h=>`<tr><td>${esc(h.problem)}${h.review?' <small>(re-solve)</small>':''}</td><td>${esc(nice(h.first_step||'-'))}</td><td>${h.hints}</td><td>${esc(nice(h.outcome))}</td><td>${esc(h.broke_on.map(nice).join(', ')||'-')}</td></tr>`).join('')}</table></div>`;
 }).catch(()=>{document.getElementById('out').textContent='Could not load the report.'});
 </script>
