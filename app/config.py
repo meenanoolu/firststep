@@ -42,6 +42,7 @@ class Settings:
     run_timeout_s: float = field(default_factory=lambda: float(os.environ.get("RUN_TIMEOUT_S", "2.0")))
     finder_budget: int = field(default_factory=lambda: _int("FINDER_BUDGET", 150))
     shrink_budget: int = field(default_factory=lambda: _int("SHRINK_BUDGET", 80))
+    finder_deadline_s: float = field(default_factory=lambda: float(os.environ.get("FINDER_DEADLINE_S", "20")))
     review_intervals_days: tuple[int, ...] = field(default_factory=_intervals)
 
     payment_url: str = field(default_factory=lambda: os.environ.get("PAYMENT_URL", ""))

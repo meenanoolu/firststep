@@ -141,7 +141,7 @@ class Program:
                 f.write(code)
             try:
                 p = subprocess.run(["g++", "-O2", "-std=c++17", src, "-o", exe], capture_output=True,
-                                   text=True, timeout=30)
+                                   text=True, timeout=15)
             except subprocess.TimeoutExpired:
                 shutil.rmtree(d, ignore_errors=True)
                 return cls("cpp", None, None, CE, "compile timed out", timeout)

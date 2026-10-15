@@ -183,7 +183,8 @@ def create_app(settings: Settings | None = None, llm="auto") -> FastAPI:
         async with sem:
             with observability.work_span("find_counterexample", problem=p.id, language=b.language):
                 res = await asyncio.to_thread(find_counterexample, p, b.language, b.code, budget=s.finder_budget,
-                                              shrink_budget=s.shrink_budget, timeout=s.run_timeout_s)
+                                              shrink_budget=s.shrink_budget, timeout=s.run_timeout_s,
+                                              deadline_s=s.finder_deadline_s)
         st.add_submission(sid, row["learner"], b.language, b.code if s.store_code else "", res["status"],
                           res.get("features", []), res.get("tests_run", 0), res.get("size_before"), res.get("size_after"))
         if res["status"] == "found":
@@ -201,6 +202,9 @@ def create_app(settings: Settings | None = None, llm="auto") -> FastAPI:
                 expl = " ".join(EXPLAIN[f] for f in res["features"][:1] if f in EXPLAIN) or \
                        "Trace your program by hand on this input and compare with the expected output."
             res["explanation"] = expl
+        elif res["status"] == "too_slow":
+            res["note"] = (f"Your program was too slow to test fully: it ran out of time after {res['tests_run']} tests. "
+                           "Look for work your code repeats, such as a loop inside a loop, and try again.")
         elif res["status"] == "none_found":
             res["note"] = (f"No failing input found in {res['tests_run']} tests. That is evidence, not proof. "
                            "Finish the session and re-solve it closed-book later.")
