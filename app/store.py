@@ -30,6 +30,10 @@ class Store:
         self.lock = threading.Lock()
         with self.lock:
             self.db.executescript(SCHEMA)
+            cols = {r["name"] for r in self.db.execute("PRAGMA table_info(sessions)")}
+            if "first_step_text" not in cols:  # migrate DBs created before real first-step capture
+                self.db.execute("ALTER TABLE sessions ADD COLUMN first_step_text TEXT")
+                self.db.commit()
 
     def _x(self, sql, args=()):
         with self.lock:
@@ -54,8 +58,9 @@ class Store:
     def session(self, sid):
         return self.one("SELECT * FROM sessions WHERE id=?", (sid,))
 
-    def set_first_step(self, sid, cat):
-        self._x("UPDATE sessions SET first_step_ts=?, first_step_cat=? WHERE id=?", (time.time(), cat, sid))
+    def set_first_step(self, sid, cat, text=None):
+        self._x("UPDATE sessions SET first_step_ts=?, first_step_cat=?, first_step_text=? WHERE id=?",
+                (time.time(), cat, text, sid))
 
     def bump_hint(self, sid):
         self._x("UPDATE sessions SET hints_used=hints_used+1 WHERE id=?", (sid,))
