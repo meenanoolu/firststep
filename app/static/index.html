@@ -47,14 +47,10 @@
     <div class="card" id="mistakeBox" hidden><h2>Where your code keeps breaking</h2><div id="mistakes"></div>
       <small>Counted from the failing inputs found in your own runs.</small></div>
     <div class="card coach" id="pay">
-      <h2>Go further: the paid plan</h2>
-      <p style="margin:0 0 8px">Free: the beginner problems, graded hints, your mistake profile and a shareable report. <b>Paid:</b> the harder level 3 problems, each with the same four-step hint ladder that never gives the answer away, plus your full learning report (week-by-week trend, the first steps you wrote, and a practice plan ranked by your recurring mistakes). It all runs on its own, with no person in the loop.</p>
+      <h2>Learning with a coach?</h2>
+      <p style="margin:0 0 8px">A coach can run a live session with you on this tool and walk through your report. You get the same leak-checked hints, plus a person who knows your mistake profile.</p>
       <div class="row"><a id="payLink" class="btn" target="_blank" rel="noopener" hidden></a>
-        <button id="shareBtn">Copy my report link</button><span id="shareOut" class="tag"></span></div>
-      <div class="row" id="unlockRow" style="margin-top:8px" hidden>
-        <input id="proCode" placeholder="Already paid? Paste your code" style="flex:1;min-width:200px" autocomplete="off">
-        <button id="proBtn">Unlock</button><span id="proOut" class="tag"></span></div>
-      <p id="proOn" class="ok" style="margin:8px 0 0" hidden>Paid plan unlocked: the harder problems are open. Your full report is at "Copy my report link", or <a id="proOpen" href="#">view it now</a>.</p>
+      <button id="shareBtn">Copy my report link</button><span id="shareOut" class="tag"></span></div>
     </div>
   </div>
 
@@ -106,20 +102,9 @@ async function api(path,method='GET',body){
 const TPL={cpp:'#include <bits/stdc++.h>\nusing namespace std;\nint main(){\n    ios::sync_with_stdio(false);cin.tie(nullptr);\n    \n}\n',python:'import sys\ndata = sys.stdin.read().split()\n'};
 $('lang').onchange=()=>{const c=$('code').value.trim();if(!c||c===TPL.cpp.trim()||c===TPL.python.trim())$('code').value=TPL[$('lang').value]};
 const TZ=-new Date().getTimezoneOffset();
-const reportUrl=()=>location.origin+'/report?learner='+encodeURIComponent(learner)+'&tz='+TZ;
-async function proState(){
-  try{const p=await api('/api/pro/status?learner='+learner);$('proOn').hidden=!p.pro;if(p.pro){$('unlockRow').hidden=true;$('proOpen').href=reportUrl();home()}return p.pro}catch(e){return false}
-}
-api('/api/config').then(async c=>{
-  if(c.payment_url){$('payLink').hidden=false;$('payLink').href=c.payment_url;$('payLink').textContent=c.payment_label}
-  if(!(await proState())&&c.pro_enabled)$('unlockRow').hidden=false;
-}).catch(()=>{});
-$('proBtn').onclick=async()=>{
-  try{await api('/api/pro/redeem','POST',{learner,code:$('proCode').value});$('proOut').textContent='';await proState()}
-  catch(e){$('proOut').textContent=e.message}
-};
+api('/api/config').then(c=>{if(c.payment_url){$('payLink').hidden=false;$('payLink').href=c.payment_url;$('payLink').textContent=c.payment_label}}).catch(()=>{});
 $('shareBtn').onclick=async()=>{
-  const u=reportUrl();
+  const u=location.origin+'/report?learner='+encodeURIComponent(learner)+'&tz='+TZ;
   try{await navigator.clipboard.writeText(u);$('shareOut').textContent='Copied. Anyone with this link can see your report.'}catch(e){$('shareOut').textContent=u}
 };
 const nice=k=>k.replace(/_/g,' ');
@@ -136,10 +121,9 @@ function dash(r){
 }
 async function home(){
   $('home').hidden=false;$('work').hidden=true;
-  const ps=await api('/api/problems?learner='+learner);
-  $('plist').innerHTML=ps.map(p=>`<div class="row" style="justify-content:space-between;margin:6px 0"><span>${esc(p.title)} <span class="tag">level ${p.difficulty} · ${p.tags.join(', ')}${p.tier==='pro'?' · paid pack':''}</span></span>${p.locked?`<button data-lock="1">Locked</button>`:`<button data-p="${p.id}">Start</button>`}</div>`).join('');
-  $('plist').querySelectorAll('button[data-p]').forEach(b=>b.onclick=()=>start(b.dataset.p));
-  $('plist').querySelectorAll('button[data-lock]').forEach(b=>b.onclick=()=>$('pay').scrollIntoView({behavior:'smooth'}));
+  const ps=await api('/api/problems');
+  $('plist').innerHTML=ps.map(p=>`<div class="row" style="justify-content:space-between;margin:6px 0"><span>${esc(p.title)} <span class="tag">level ${p.difficulty} · ${p.tags.join(', ')}</span></span><button data-p="${p.id}">Start</button></div>`).join('');
+  $('plist').querySelectorAll('button').forEach(b=>b.onclick=()=>start(b.dataset.p));
   const d=await api('/api/reviews/due?learner='+learner);
   $('dueBox').hidden=!d.due.length;
   $('dueList').innerHTML=d.due.map(r=>`<div class="row due card" style="margin:6px 0"><span>${esc(r.problem_id)} (round ${r.stage+1})</span><button class="primary" data-p="${r.problem_id}" data-r="${r.id}">Re-solve closed-book</button></div>`).join('');
@@ -147,7 +131,7 @@ async function home(){
   dash(await api('/api/report?learner='+learner+'&tz='+TZ));
 }
 async function start(pid,review){
-  const p=await api('/api/problems/'+pid+'?learner='+learner);
+  const p=await api('/api/problems/'+pid);
   const s=await api('/api/sessions','POST',{learner,problem_id:pid,review_id:review||null});
   sid=s.session_id;
   $('home').hidden=true;$('work').hidden=false;
