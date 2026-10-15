@@ -36,6 +36,7 @@ class Settings:
     db_path: str = field(default_factory=lambda: os.environ.get("DB_PATH", str(ROOT / "data" / "firststep.db")))
     dev_mode: bool = field(default_factory=lambda: _flag("DEV_MODE", False))
     store_code: bool = field(default_factory=lambda: _flag("STORE_CODE", True))
+    store_first_steps: bool = field(default_factory=lambda: _flag("STORE_FIRST_STEPS", True))
     max_concurrent_runs: int = field(default_factory=lambda: _int("MAX_CONCURRENT_RUNS", 2))
     max_submits_per_day: int = field(default_factory=lambda: _int("MAX_SUBMITS_PER_DAY", 80))
     run_timeout_s: float = field(default_factory=lambda: float(os.environ.get("RUN_TIMEOUT_S", "2.0")))
@@ -44,7 +45,7 @@ class Settings:
     review_intervals_days: tuple[int, ...] = field(default_factory=_intervals)
 
     payment_url: str = field(default_factory=lambda: os.environ.get("PAYMENT_URL", ""))
-    payment_label: str = field(default_factory=lambda: os.environ.get("PAYMENT_LABEL", "Support / book a coaching session"))
+    payment_label: str = field(default_factory=lambda: os.environ.get("PAYMENT_LABEL", "Book a 30-min coaching session that uses this tool"))
 
     llm_provider: str = field(default_factory=lambda: os.environ.get("LLM_PROVIDER", "none").lower())
     ollama_url: str = field(default_factory=lambda: os.environ.get("OLLAMA_URL", "http://localhost:11434"))
