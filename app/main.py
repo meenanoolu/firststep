@@ -10,7 +10,7 @@ from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
-from . import firststep, observability, leakcheck, metrics, scheduler
+from . import firststep, observability, leakcheck, metrics, pro, scheduler
 from .config import Settings, get_settings
 from .counterexample import find_counterexample
 from .hints import get_hint
@@ -58,6 +58,11 @@ class Finish(BaseModel):
     solved: bool
 
 
+class Redeem(BaseModel):
+    learner: str = Field(min_length=6, max_length=64)
+    code: str = Field(min_length=1, max_length=200)
+
+
 class Shift(BaseModel):
     learner: str
     days: int = 1
@@ -68,6 +73,7 @@ def create_app(settings: Settings | None = None, llm="auto") -> FastAPI:
     st = Store(s.db_path)
     observability.init()
     client = get_client(s) if llm == "auto" else llm
+    bad_codes: dict[str, list[float]] = {}   # learner -> times of wrong codes (brute-force guard)
     sem = asyncio.Semaphore(max(1, s.max_concurrent_runs))
     app = FastAPI(title="FirstStep")
 
@@ -84,7 +90,29 @@ def create_app(settings: Settings | None = None, llm="auto") -> FastAPI:
     @app.get("/api/config")
     def config():
         url = s.payment_url if s.payment_url.startswith("https://") else ""
-        return {"payment_url": url, "payment_label": s.payment_label}
+        return {"payment_url": url, "payment_label": s.payment_label,
+                "pro_enabled": bool(s.pro_codes or s.gumroad_product_id)}
+
+    @app.post("/api/pro/redeem")
+    def redeem(b: Redeem):
+        now = time.time()
+        recent = [t for t in bad_codes.get(b.learner, []) if now - t < 3600]
+        if len(recent) >= 8:
+            raise HTTPException(429, "Too many wrong codes. Try again in an hour.")
+        h = pro.code_hash(b.code)
+        owner = st.unlock_owner(h)
+        if owner and owner != b.learner:
+            raise HTTPException(403, "That code is already used on another device.")
+        if not owner:
+            if not pro.code_is_valid(s, b.code):
+                bad_codes[b.learner] = recent + [now]
+                raise HTTPException(400, "That code is not valid.")
+            st.add_unlock(h, b.learner)
+        return {"pro": True}
+
+    @app.get("/api/pro/status")
+    def pro_status(learner: str):
+        return {"pro": st.is_pro(learner)}
 
     @app.get("/api/problems")
     def problems():
@@ -197,8 +225,10 @@ def create_app(settings: Settings | None = None, llm="auto") -> FastAPI:
     def report(learner: str, tz: int = 0):
         """Per-learner progress report (what a learner shares with a friend or mentor). tz = minutes east of UTC."""
         tz = max(-840, min(840, tz))
-        return metrics.learner_report(st, learner, {k: v.title for k, v in PROBLEMS.items()},
-                                      s.review_intervals_days, tz_offset_min=tz)
+        titles = {k: v.title for k, v in PROBLEMS.items()}
+        out = metrics.learner_report(st, learner, titles, s.review_intervals_days, tz_offset_min=tz)
+        out["pro"] = pro.pro_report(st, learner, out, titles, tz) if st.is_pro(learner) else None
+        return out
 
     @app.get("/api/stats")
     def stats(learner: str):

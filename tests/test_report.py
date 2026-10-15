@@ -104,3 +104,61 @@ def test_runner_blocks_common_escapes():
     assert _verdict("cpp", '#include <bits/stdc++.h>\nint main(){int f=open("/proc/1/environ",0);}') == "REJECTED"
     assert _verdict("cpp", "#include <unistd.h>\nint main(){}") == "REJECTED"
     assert _verdict("cpp", "#include <bits/stdc++.h>\nint main(){int n;std::cin>>n;std::cout<<n;}") == "OK"
+
+
+# ---------------------------------------------------------------- paid full report
+from app import pro  # noqa: E402
+
+CODE = "unlock-code-123456"
+
+
+def test_report_locked_until_code_redeemed():
+    c = mk(pro_codes=(CODE,))
+    play(c)
+    assert c.get("/api/config").json()["pro_enabled"] is True
+    assert c.get("/api/report", params={"learner": L}).json()["pro"] is None
+    assert c.post("/api/pro/redeem", json={"learner": L, "code": "wrong-code-0000"}).status_code == 400
+    assert c.post("/api/pro/redeem", json={"learner": L, "code": CODE}).json() == {"pro": True}
+    assert c.get("/api/pro/status", params={"learner": L}).json() == {"pro": True}
+    r = c.get("/api/report", params={"learner": L}).json()["pro"]
+    assert r["trend"][0]["sessions"] == 1 and r["first_steps"][0]["text"].startswith("I would try all blocks")
+    assert r["next_up"], "a learner who failed on all_negative gets a practice plan"
+
+
+def test_code_works_for_one_learner_only_and_guard_blocks_guessing():
+    c = mk(pro_codes=(CODE,))
+    assert c.post("/api/pro/redeem", json={"learner": L, "code": CODE}).status_code == 200
+    assert c.post("/api/pro/redeem", json={"learner": L, "code": CODE}).status_code == 200  # same learner again is fine
+    assert c.post("/api/pro/redeem", json={"learner": "someone-else-1", "code": CODE}).status_code == 403
+    for _ in range(8):
+        c.post("/api/pro/redeem", json={"learner": "guesser-0001", "code": "nope-nope-nope"})
+    assert c.post("/api/pro/redeem", json={"learner": "guesser-0001", "code": CODE}).status_code == 429
+
+
+def test_no_codes_configured_means_nothing_unlocks():
+    c = mk()
+    assert c.get("/api/config").json()["pro_enabled"] is False
+    assert c.post("/api/pro/redeem", json={"learner": L, "code": "anything-long-enough"}).status_code == 400
+
+
+def test_gumroad_verification_logic():
+    s = dataclasses.replace(Settings(), gumroad_product_id="prod123")
+    class R:
+        def __init__(self, j): self.j = j
+        def json(self): return self.j
+    ok = lambda *a, **k: R({"success": True, "purchase": {"refunded": False, "chargebacked": False}})
+    refunded = lambda *a, **k: R({"success": True, "purchase": {"refunded": True}})
+    bad = lambda *a, **k: R({"success": False})
+    boom = lambda *a, **k: (_ for _ in ()).throw(RuntimeError("network"))
+    assert pro.code_is_valid(s, "LICENSE-KEY-1234", post=ok)
+    assert not pro.code_is_valid(s, "LICENSE-KEY-1234", post=refunded)
+    assert not pro.code_is_valid(s, "LICENSE-KEY-1234", post=bad)
+    assert not pro.code_is_valid(s, "LICENSE-KEY-1234", post=boom)
+
+
+def test_next_up_ranks_by_mistakes_and_skips_mastered():
+    feats = pro.problem_features()
+    assert "all_negative" in feats["max-subarray"]
+    plan = pro.next_up({"all_negative": 3}, {}, {"max-subarray": "Best stretch"})
+    assert plan and plan[0]["problem_id"] == "max-subarray"
+    assert pro.next_up({"all_negative": 3}, {"max-subarray": "mastered"}, {}) == []

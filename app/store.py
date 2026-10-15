@@ -16,6 +16,8 @@ CREATE TABLE IF NOT EXISTS submissions(
   status TEXT, features TEXT, tests_run INTEGER, size_before INTEGER, size_after INTEGER);
 CREATE TABLE IF NOT EXISTS reviews(
   id INTEGER PRIMARY KEY, learner TEXT, problem_id TEXT, stage INTEGER, due_ts REAL, done_ts REAL, outcome TEXT);
+CREATE TABLE IF NOT EXISTS pro_unlocks(
+  code_hash TEXT PRIMARY KEY, learner TEXT, ts REAL);
 CREATE TABLE IF NOT EXISTS model_calls(
   id INTEGER PRIMARY KEY, ts REAL, job TEXT, accepted INTEGER, reason TEXT);
 """
@@ -106,3 +108,14 @@ class Store:
     def log_model(self, job, accepted, reason=""):
         self._x("INSERT INTO model_calls(ts,job,accepted,reason) VALUES(?,?,?,?)",
                 (time.time(), job, int(accepted), reason))
+
+    # paid report unlocks (the code itself is never stored, only its hash)
+    def unlock_owner(self, code_hash):
+        r = self.one("SELECT learner FROM pro_unlocks WHERE code_hash=?", (code_hash,))
+        return r["learner"] if r else None
+
+    def add_unlock(self, code_hash, learner):
+        self._x("INSERT OR IGNORE INTO pro_unlocks(code_hash,learner,ts) VALUES(?,?,?)", (code_hash, learner, time.time()))
+
+    def is_pro(self, learner) -> bool:
+        return self.one("SELECT 1 x FROM pro_unlocks WHERE learner=?", (learner,)) is not None

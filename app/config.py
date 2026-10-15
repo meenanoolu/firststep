@@ -45,7 +45,13 @@ class Settings:
     review_intervals_days: tuple[int, ...] = field(default_factory=_intervals)
 
     payment_url: str = field(default_factory=lambda: os.environ.get("PAYMENT_URL", ""))
-    payment_label: str = field(default_factory=lambda: os.environ.get("PAYMENT_LABEL", "Support FirstStep"))
+    payment_label: str = field(default_factory=lambda: os.environ.get("PAYMENT_LABEL", "Get my full learning report"))
+
+    # Paid "full learning report". Codes are checked server-side. Either list codes by hand (PRO_CODES, comma
+    # separated, long and random) or let Gumroad issue one license key per sale (GUMROAD_PRODUCT_ID).
+    pro_codes: tuple[str, ...] = field(default_factory=lambda: tuple(
+        c.strip() for c in os.environ.get("PRO_CODES", "").split(",") if c.strip()))
+    gumroad_product_id: str = field(default_factory=lambda: os.environ.get("GUMROAD_PRODUCT_ID", ""))
 
     llm_provider: str = field(default_factory=lambda: os.environ.get("LLM_PROVIDER", "none").lower())
     ollama_url: str = field(default_factory=lambda: os.environ.get("OLLAMA_URL", "http://localhost:11434"))
