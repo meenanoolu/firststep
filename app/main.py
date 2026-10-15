@@ -114,7 +114,7 @@ def create_app(settings: Settings | None = None, llm="auto") -> FastAPI:
         res = firststep.judge(p.statement, b.text, client)
         if client:
             st.log_model("judge_first_step", res["source"] == "model", "" if res["source"] == "model" else "invalid label")
-        st.set_first_step(sid, res["category"])
+        st.set_first_step(sid, res["category"], b.text if s.store_first_steps else None)
         return res
 
     @app.post("/api/sessions/{sid}/hint")
@@ -193,6 +193,13 @@ def create_app(settings: Settings | None = None, llm="auto") -> FastAPI:
     def due(learner: str):
         return {"due": st.due_reviews(learner), "upcoming": st.upcoming_reviews(learner)}
 
+    @app.get("/api/report")
+    def report(learner: str, tz: int = 0):
+        """Per-learner progress report (what a coach shares with a student). tz = minutes east of UTC."""
+        tz = max(-840, min(840, tz))
+        return metrics.learner_report(st, learner, {k: v.title for k, v in PROBLEMS.items()},
+                                      s.review_intervals_days, tz_offset_min=tz)
+
     @app.get("/api/stats")
     def stats(learner: str):
         return {"learner": metrics.learner_stats(st, learner), "model": metrics.model_stats(st)}
@@ -206,6 +213,10 @@ def create_app(settings: Settings | None = None, llm="auto") -> FastAPI:
     @app.get("/")
     def index():
         return FileResponse(STATIC / "index.html")
+
+    @app.get("/report")
+    def report_page():
+        return FileResponse(STATIC / "report.html")
 
     app.mount("/static", StaticFiles(directory=STATIC), name="static")
     return app

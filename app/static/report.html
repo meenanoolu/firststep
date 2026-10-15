@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>FirstStep report</title>
+<style>
+  :root{--bg:#fafaf7;--fg:#1c1c1a;--mut:#6b6b64;--card:#fff;--bd:#dcdcd2;--ac:#2f6f4f;--bad:#a8402f;--code:#f1f1ea}
+  @media (prefers-color-scheme:dark){:root{--bg:#161715;--fg:#ecece4;--mut:#9a9a90;--card:#202220;--bd:#34362f;--ac:#7fc79f;--bad:#e58a77;--code:#262823}}
+  @media print{:root{--bg:#fff;--fg:#000;--card:#fff;--bd:#bbb;--code:#eee;--mut:#444}button,.noprint{display:none}}
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--fg);font:16px/1.5 system-ui,sans-serif}
+  main{max-width:820px;margin:0 auto;padding:16px}
+  h1{font-size:1.4rem;margin:.2rem 0}h2{font-size:1.1rem;margin:.2rem 0 .6rem}
+  .card{background:var(--card);border:1px solid var(--bd);border-radius:10px;padding:14px;margin:12px 0}
+  .kpis{display:flex;gap:10px;flex-wrap:wrap}.kpi{flex:1;min-width:120px;background:var(--code);border-radius:8px;padding:8px 10px}
+  .kpi b{display:block;font-size:1.3rem}small,.mut{color:var(--mut)}
+  table{width:100%;border-collapse:collapse;font-size:.92rem}th,td{text-align:left;padding:6px 8px;border-bottom:1px solid var(--bd);vertical-align:top}
+  .bar{display:flex;align-items:center;gap:8px;margin:4px 0;font-size:.9rem}.bar .lab{flex:0 0 170px}
+  .bar .trk{flex:1;background:var(--code);border-radius:6px;height:12px;overflow:hidden}.bar .fill{height:100%;background:var(--bad)}
+  button{font:inherit;padding:8px 14px;border-radius:8px;border:1px solid var(--bd);background:var(--card);color:var(--fg);cursor:pointer}
+</style>
+</head>
+<body>
+<main>
+  <h1>FirstStep session report</h1>
+  <p class="mut" id="when"></p>
+  <div id="out">Loading...</div>
+  <p class="noprint"><button onclick="window.print()">Print / save as PDF</button> <a href="/">Back to FirstStep</a></p>
+  <p><small>How to read this: "first step" is what the learner wrote before any code. "Broke on" lists the kinds of input that made their program fail, found by a brute-force checker (no model involved). A hint count of 0 means no hints were used.</small></p>
+</main>
+<script>
+const q=new URLSearchParams(location.search),learner=q.get('learner')||'',tz=q.get('tz')||'0';
+const esc=s=>String(s??'').replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));
+const nice=k=>String(k).replace(/_/g,' ');
+document.getElementById('when').textContent=new Date().toLocaleDateString(undefined,{dateStyle:'long'});
+fetch('/api/report?learner='+encodeURIComponent(learner)+'&tz='+encodeURIComponent(tz)).then(r=>r.json()).then(r=>{
+  if(!r.sessions){document.getElementById('out').textContent='No sessions yet for this learner.';return}
+  const kp=(n,l)=>`<div class="kpi"><b>${n}</b><small>${l}</small></div>`;
+  const prof=Object.entries(r.failure_profile||{}),mx=Math.max(1,...prof.map(x=>x[1]));
+  document.getElementById('out').innerHTML=
+   `<div class="card"><div class="kpis">${kp(r.finished+' / '+r.sessions,'sessions finished')}${kp(r.streak_days,'day streak')}${kp(r.avg_hints??'-','avg hints')}${kp(r.first_step_viable_rate==null?'-':Math.round(r.first_step_viable_rate*100)+'%','first steps judged workable')}${kp(r.unaided_restart_rate==null?'-':Math.round(r.unaided_restart_rate*100)+'%','closed-book re-solves done unaided')}</div></div>`+
+   `<div class="card"><h2>Where the code keeps breaking</h2>${prof.length?prof.map(([k,v])=>`<div class="bar"><span class="lab">${esc(nice(k))}</span><span class="trk"><div class="fill" style="width:${100*v/mx}%"></div></span><span>${v}</span></div>`).join(''):'<span class="mut">No failing inputs found yet.</span>'}</div>`+
+   `<div class="card"><h2>Problems</h2><table><tr><th>Problem</th><th>Re-solves done</th><th>Status</th></tr>${r.problems.map(p=>`<tr><td>${esc(p.title)}</td><td>${p.rungs_done} / ${p.ladder_len}</td><td>${p.status==='waiting'?'next in '+Math.ceil(p.next_due_days)+' day(s)':nice(p.status)}</td></tr>`).join('')}</table></div>`+
+   `<div class="card"><h2>Recent sessions</h2><table><tr><th>Problem</th><th>First step</th><th>Hints</th><th>Outcome</th><th>Broke on</th></tr>${r.history.map(h=>`<tr><td>${esc(h.problem)}${h.review?' <small>(re-solve)</small>':''}</td><td>${esc(nice(h.first_step||'-'))}</td><td>${h.hints}</td><td>${esc(nice(h.outcome))}</td><td>${esc(h.broke_on.map(nice).join(', ')||'-')}</td></tr>`).join('')}</table></div>`;
+}).catch(()=>{document.getElementById('out').textContent='Could not load the report.'});
+</script>
+</body>
+</html>

@@ -24,6 +24,15 @@
   .hidden{display:none}
   .due{border-left:4px solid var(--ac)}
   small{color:var(--mut)}
+  .bar{display:flex;align-items:center;gap:8px;margin:4px 0;font-size:.9rem}
+  .bar .lab{flex:0 0 170px}.bar .trk{flex:1;background:var(--code);border-radius:6px;height:12px;overflow:hidden}
+  .bar .fill{height:100%;background:var(--bad)}.bar .n{flex:0 0 28px;text-align:right;color:var(--mut)}
+  .ladder{display:inline-flex;gap:4px;vertical-align:middle}.ladder i{width:14px;height:14px;border-radius:4px;border:1px solid var(--bd);display:inline-block}
+  .ladder i.on{background:var(--ac);border-color:var(--ac)}
+  .kpis{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:8px}.kpi{flex:1;min-width:110px;background:var(--code);border-radius:8px;padding:8px 10px}
+  .kpi b{display:block;font-size:1.3rem}
+  .coach{border-left:4px solid var(--ac)}
+  a.btn{display:inline-block;font:inherit;padding:8px 14px;border-radius:8px;background:var(--ac);color:#fff;text-decoration:none}
 </style>
 </head>
 <body>
@@ -31,11 +40,18 @@
   <h1>FirstStep</h1>
   <p class="sub">Learn to start from scratch. Practice tool, not for live contests: it never gives you the solution.</p>
 
-  <p id="pay" hidden><a id="payLink" target="_blank" rel="noopener"></a></p>
   <div id="home">
     <div class="card" id="dueBox" hidden><h2>Closed-book re-solves due</h2><div id="dueList"></div></div>
     <div class="card"><h2>Pick a problem</h2><div id="plist"></div></div>
-    <div class="card"><h2>Your numbers</h2><div id="stats" class="tag">Nothing yet.</div></div>
+    <div class="card"><h2>Your progress</h2><div id="stats" class="tag">Finish a session to see your progress here.</div></div>
+    <div class="card" id="mistakeBox" hidden><h2>Where your code keeps breaking</h2><div id="mistakes"></div>
+      <small>Counted from the failing inputs found in your own runs.</small></div>
+    <div class="card coach" id="pay" hidden>
+      <h2>Learning with a coach?</h2>
+      <p style="margin:0 0 8px">A coach can run a live session with you on this tool and walk through your report. You get the same leak-checked hints, plus a person who knows your mistake profile.</p>
+      <div class="row"><a id="payLink" class="btn" target="_blank" rel="noopener"></a>
+      <button id="shareBtn">Copy my report link</button><span id="shareOut" class="tag"></span></div>
+    </div>
   </div>
 
   <div id="work" hidden>
@@ -43,9 +59,10 @@
 
     <div class="card" id="stepBox">
       <h2>Step 0: before any code</h2>
-      <p>In one or two sentences: how would you start? (No code. A small example, a try-everything idea, or or one thing you would keep track of.)</p>
+      <p>In one or two sentences: how would you start? (No code. A small example, a try-everything idea, or one thing you would keep track of.)</p>
       <textarea id="stepText" rows="3" maxlength="600"></textarea>
       <div class="row" style="margin-top:8px"><button class="primary" id="stepBtn">Check my first step</button><span id="stepOut"></span></div>
+      <small>Your first-step sentence is saved (without your name) to help improve the first-step checker.</small>
     </div>
 
     <div class="card" id="codeBox" hidden>
@@ -84,7 +101,24 @@ async function api(path,method='GET',body){
 }
 const TPL={cpp:'#include <bits/stdc++.h>\nusing namespace std;\nint main(){\n    ios::sync_with_stdio(false);cin.tie(nullptr);\n    \n}\n',python:'import sys\ndata = sys.stdin.read().split()\n'};
 $('lang').onchange=()=>{const c=$('code').value.trim();if(!c||c===TPL.cpp.trim()||c===TPL.python.trim())$('code').value=TPL[$('lang').value]};
+const TZ=-new Date().getTimezoneOffset();
 api('/api/config').then(c=>{if(c.payment_url){$('pay').hidden=false;$('payLink').href=c.payment_url;$('payLink').textContent=c.payment_label}}).catch(()=>{});
+$('shareBtn').onclick=async()=>{
+  const u=location.origin+'/report?learner='+encodeURIComponent(learner)+'&tz='+TZ;
+  try{await navigator.clipboard.writeText(u);$('shareOut').textContent='Copied. Anyone with this link can see your report.'}catch(e){$('shareOut').textContent=u}
+};
+const nice=k=>k.replace(/_/g,' ');
+function ladderHtml(p){return '<span class="ladder" title="closed-book re-solves done">'+Array.from({length:p.ladder_len},(_,i)=>`<i class="${i<p.rungs_done?'on':''}"></i>`).join('')+'</span>'}
+const STATUS={due:'due now',waiting:'next in ',mastered:'ladder complete',in_progress:'in progress'};
+function dash(r){
+  if(!r.sessions){$('stats').textContent='Finish a session to see your progress here.';$('mistakeBox').hidden=true;return}
+  const kp=(n,l)=>`<div class="kpi"><b>${n}</b><small>${l}</small></div>`;
+  $('stats').innerHTML=`<div class="kpis">${kp(r.streak_days,'day streak')}${kp(r.mastered,'problems mastered')}${kp(r.due_now,'re-solves due')}${kp(r.avg_hints??'-','avg hints per session')}</div>`+
+    r.problems.map(p=>`<div class="row" style="justify-content:space-between;margin:4px 0"><span>${esc(p.title)}</span><span>${ladderHtml(p)} <small>${STATUS[p.status]}${p.status==='waiting'?Math.max(0,Math.ceil(p.next_due_days))+' day(s)':''}</small></span></div>`).join('');
+  const prof=Object.entries(r.failure_profile||{});const mx=Math.max(1,...prof.map(x=>x[1]));
+  $('mistakeBox').hidden=!prof.length;
+  $('mistakes').innerHTML=prof.slice(0,8).map(([k,v])=>`<div class="bar"><span class="lab">${esc(nice(k))}</span><span class="trk"><div class="fill" style="width:${100*v/mx}%"></div></span><span class="n">${v}</span></div>`).join('');
+}
 async function home(){
   $('home').hidden=false;$('work').hidden=true;
   const ps=await api('/api/problems');
@@ -94,10 +128,7 @@ async function home(){
   $('dueBox').hidden=!d.due.length;
   $('dueList').innerHTML=d.due.map(r=>`<div class="row due card" style="margin:6px 0"><span>${esc(r.problem_id)} (round ${r.stage+1})</span><button class="primary" data-p="${r.problem_id}" data-r="${r.id}">Re-solve closed-book</button></div>`).join('');
   $('dueList').querySelectorAll('button').forEach(b=>b.onclick=()=>start(b.dataset.p,+b.dataset.r));
-  const s=(await api('/api/stats?learner='+learner)).learner;
-  if(s.sessions){
-    $('stats').innerHTML=`Sessions: ${s.sessions} (finished ${s.finished}). Avg hints: ${s.avg_hints??'-'}. Re-solves done: ${s.reviews_done}. Unaided restart rate: ${s.unaided_restart_rate??'-'}.`;
-  }
+  dash(await api('/api/report?learner='+learner+'&tz='+TZ));
 }
 async function start(pid,review){
   const p=await api('/api/problems/'+pid);
@@ -147,7 +178,8 @@ async function finish(solved){
     $('endBox').hidden=false;
     $('endBox').innerHTML=`<h2>Session done: ${esc(r.outcome.replace('_',' '))}</h2>`+
       (r.next_review_in_days!=null?`<p>Come back in ${r.next_review_in_days} day(s) and solve it again with no notes.</p>`:'<p>You finished the whole ladder for this problem.</p>')+
-      (prof.length?`<p><b>Where your code tends to break:</b> ${prof.map(([k,v])=>esc(k.replace(/_/g,' '))+' ('+v+')').join(', ')}</p>`:'');
+      (prof.length?`<p><b>Where your code tends to break:</b> ${prof.map(([k,v])=>esc(k.replace(/_/g,' '))+' ('+v+')').join(', ')}</p>`:'')+
+      `<p class="tag">Your first step was checked <i>before</i> you coded; the failing input came from a brute-force checker, not a model.</p>`;
     ['hintBtn','runBtn','doneBtn','giveBtn'].forEach(i=>$(i).disabled=true);
   }catch(e){$('result').innerHTML=`<p class="bad">${esc(e.message)}</p>`}
 }
