@@ -5,7 +5,7 @@ import asyncio
 import time
 from pathlib import Path
 
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
@@ -14,6 +14,7 @@ from . import firststep, observability, leakcheck, metrics, pro, scheduler
 from .config import Settings, get_settings
 from .counterexample import find_counterexample
 from .hints import get_hint
+from .limits import Limiter, client_ip
 from .llm import get_client
 from .problems import PROBLEMS
 from .store import Store
@@ -78,6 +79,7 @@ def create_app(settings: Settings | None = None, llm="auto") -> FastAPI:
     observability.init()
     client = get_client(s) if llm == "auto" else llm
     bad_codes: dict[str, list[float]] = {}   # learner -> times of wrong codes (brute-force guard)
+    limiter = Limiter()                      # per client address
     sem = asyncio.Semaphore(max(1, s.max_concurrent_runs))
     app = FastAPI(title="FirstStep")
 
@@ -98,7 +100,10 @@ def create_app(settings: Settings | None = None, llm="auto") -> FastAPI:
                 "pro_enabled": bool(s.pro_codes or s.gumroad_product_id)}
 
     @app.post("/api/pro/redeem")
-    def redeem(b: Redeem):
+    def redeem(b: Redeem, request: Request):
+        ip = client_ip(request)
+        if limiter.blocked("code:" + ip, s.max_code_failures_per_ip_per_hour, 3600):
+            raise HTTPException(429, "Too many wrong codes from this network. Try again in an hour.")
         now = time.time()
         recent = [t for t in bad_codes.get(b.learner, []) if now - t < 3600]
         if len(recent) >= 8:
@@ -106,10 +111,11 @@ def create_app(settings: Settings | None = None, llm="auto") -> FastAPI:
         h = pro.code_hash(b.code)
         owner = st.unlock_owner(h)
         if owner and owner != b.learner:
-            raise HTTPException(403, "That code is already used on another device.")
-        if not owner:
+            st.transfer_unlock(h, b.learner)    # the buyer moved browser or device: the newest holder keeps it
+        elif not owner:
             if not pro.code_is_valid(s, b.code):
                 bad_codes[b.learner] = recent + [now]
+                limiter.record("code:" + ip, 3600)
                 raise HTTPException(400, "That code is not valid.")
             st.add_unlock(h, b.learner)
         return {"pro": True}
@@ -173,13 +179,17 @@ def create_app(settings: Settings | None = None, llm="auto") -> FastAPI:
         return {"level": res["level"], "text": res["text"], "source": res["source"]}
 
     @app.post("/api/sessions/{sid}/submit")
-    async def submit(sid: int, b: Submit):
+    async def submit(sid: int, b: Submit, request: Request):
+        ip = client_ip(request)
+        if limiter.blocked("run:" + ip, s.max_submits_per_ip_per_day, 86400):
+            raise HTTPException(429, "Too many runs from this network today. Come back tomorrow.")
         row = sess_or_404(sid)
         if row["finished"]:
             raise HTTPException(400, "session finished")
         if st.submissions_last_day(row["learner"]) >= s.max_submits_per_day:
             raise HTTPException(429, "Daily run limit reached. Come back tomorrow.")
         p = PROBLEMS[row["problem_id"]]
+        limiter.record("run:" + ip, 86400)
         async with sem:
             with observability.work_span("find_counterexample", problem=p.id, language=b.language):
                 res = await asyncio.to_thread(find_counterexample, p, b.language, b.code, budget=s.finder_budget,

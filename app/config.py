@@ -39,6 +39,8 @@ class Settings:
     store_first_steps: bool = field(default_factory=lambda: _flag("STORE_FIRST_STEPS", True))
     max_concurrent_runs: int = field(default_factory=lambda: _int("MAX_CONCURRENT_RUNS", 2))
     max_submits_per_day: int = field(default_factory=lambda: _int("MAX_SUBMITS_PER_DAY", 80))
+    max_submits_per_ip_per_day: int = field(default_factory=lambda: _int("MAX_SUBMITS_PER_IP_PER_DAY", 300))
+    max_code_failures_per_ip_per_hour: int = field(default_factory=lambda: _int("MAX_CODE_FAILURES_PER_IP_PER_HOUR", 20))
     run_timeout_s: float = field(default_factory=lambda: float(os.environ.get("RUN_TIMEOUT_S", "2.0")))
     finder_budget: int = field(default_factory=lambda: _int("FINDER_BUDGET", 150))
     shrink_budget: int = field(default_factory=lambda: _int("SHRINK_BUDGET", 80))

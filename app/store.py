@@ -117,5 +117,8 @@ class Store:
     def add_unlock(self, code_hash, learner):
         self._x("INSERT OR IGNORE INTO pro_unlocks(code_hash,learner,ts) VALUES(?,?,?)", (code_hash, learner, time.time()))
 
+    def transfer_unlock(self, code_hash, learner):
+        self._x("UPDATE pro_unlocks SET learner=?, ts=? WHERE code_hash=?", (learner, time.time(), code_hash))
+
     def is_pro(self, learner) -> bool:
         return self.one("SELECT 1 x FROM pro_unlocks WHERE learner=?", (learner,)) is not None

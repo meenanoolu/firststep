@@ -125,11 +125,13 @@ def test_report_locked_until_code_redeemed():
     assert r["next_up"], "a learner who failed on all_negative gets a practice plan"
 
 
-def test_code_works_for_one_learner_only_and_guard_blocks_guessing():
+def test_code_moves_to_the_newest_device_and_guard_blocks_guessing():
     c = mk(pro_codes=(CODE,))
     assert c.post("/api/pro/redeem", json={"learner": L, "code": CODE}).status_code == 200
     assert c.post("/api/pro/redeem", json={"learner": L, "code": CODE}).status_code == 200  # same learner again is fine
-    assert c.post("/api/pro/redeem", json={"learner": "someone-else-1", "code": CODE}).status_code == 403
+    assert c.post("/api/pro/redeem", json={"learner": "new-browser-1", "code": CODE}).status_code == 200
+    assert c.get("/api/pro/status", params={"learner": "new-browser-1"}).json() == {"pro": True}
+    assert c.get("/api/pro/status", params={"learner": L}).json() == {"pro": False}   # one code, one active holder
     for _ in range(8):
         c.post("/api/pro/redeem", json={"learner": "guesser-0001", "code": "nope-nope-nope"})
     assert c.post("/api/pro/redeem", json={"learner": "guesser-0001", "code": CODE}).status_code == 429
