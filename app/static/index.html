@@ -171,7 +171,7 @@ async function start(pid,review){
   $('pbody').innerHTML=`<p>${esc(p.statement)}</p><p><b>Input:</b> ${esc(p.input_format)}<br><b>Output:</b> ${esc(p.output_format)}<br><b>Limits:</b> ${esc(p.constraints)}</p>`+
     p.samples.map(x=>`<div class="row" style="align-items:flex-start"><div style="flex:1"><small>Sample input</small><pre>${esc(x.input)}</pre></div><div style="flex:1"><small>Sample output</small><pre>${esc(x.output)}</pre></div></div>`).join('');
   ['stepOut','result','hints'].forEach(i=>$(i).innerHTML='');
-  $('stepText').value='';$('code').value=TPL[$('lang').value];$('hintN').textContent='0';
+  $('stepText').value='';$('code').value='';$('hintN').textContent='0';
   $('stepBox').hidden=false;$('codeBox').hidden=true;$('endBox').hidden=true;
   $('hintBtn').disabled=false;$('runBtn').disabled=false;$('doneBtn').disabled=false;$('giveBtn').disabled=false;
 }
