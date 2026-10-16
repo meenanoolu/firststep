@@ -186,6 +186,8 @@ def create_app(settings: Settings | None = None, llm="auto") -> FastAPI:
         row = sess_or_404(sid)
         if row["finished"]:
             raise HTTPException(400, "session finished")
+        if row["first_step_cat"] not in firststep.VIABLE:
+            raise HTTPException(403, "Write a good first step before submitting code.")
         if st.submissions_last_day(row["learner"]) >= s.max_submits_per_day:
             raise HTTPException(429, "Daily run limit reached. Come back tomorrow.")
         p = PROBLEMS[row["problem_id"]]
