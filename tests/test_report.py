@@ -188,6 +188,7 @@ def test_pro_problem_full_session_finds_the_classic_bug():
     c = mk(pro_codes=(CODE,))
     c.post("/api/pro/redeem", json={"learner": L, "code": CODE})
     sid = c.post("/api/sessions", json={"learner": L, "problem_id": "exact-target-blocks"}).json()["session_id"]
+    c.post(f"/api/sessions/{sid}/first-step", json={"text": "I would work a small example by hand with 3 numbers, like 1 2 3"})
     buggy = ("n,k=map(int,input().split());a=list(map(int,input().split()))\nseen={};s=0;t=0\nfor x in a:\n"
              "    s+=x\n    t+=seen.get(s-k,0)\n    seen[s]=seen.get(s,0)+1\nprint(t)\n")
     r = c.post(f"/api/sessions/{sid}/submit", json={"code": buggy}).json()

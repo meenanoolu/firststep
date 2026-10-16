@@ -14,7 +14,9 @@ def mk(**kw):
 
 
 def session(c, learner):
-    return c.post("/api/sessions", json={"learner": learner, "problem_id": "longest-equal-run"}).json()["session_id"]
+    sid = c.post("/api/sessions", json={"learner": learner, "problem_id": "longest-equal-run"}).json()["session_id"]
+    c.post(f"/api/sessions/{sid}/first-step", json={"text": "I would work a small example by hand with 3 numbers, like 1 2 3"})
+    return sid
 
 
 def test_limiter_window():

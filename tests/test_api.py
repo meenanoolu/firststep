@@ -45,6 +45,7 @@ def test_full_flow_and_review_ladder():
 def test_daily_cap():
     c = mk(max_submits_per_day=1)
     sid = c.post("/api/sessions", json={"learner": L, "problem_id": "longest-equal-run"}).json()["session_id"]
+    c.post(f"/api/sessions/{sid}/first-step", json={"text": "I would work a small example by hand with 3 numbers, like 1 2 3"})
     assert c.post(f"/api/sessions/{sid}/submit", json={"code": "print(1)"}).status_code == 200
     assert c.post(f"/api/sessions/{sid}/submit", json={"code": "print(1)"}).status_code == 429
 
@@ -52,6 +53,7 @@ def test_daily_cap():
 def test_leaky_model_explanation_discarded():
     c = mk(llm=FakeClient("The answer is:\n```python\nprint(1)\n```"))
     sid = c.post("/api/sessions", json={"learner": L, "problem_id": "max-subarray"}).json()["session_id"]
+    c.post(f"/api/sessions/{sid}/first-step", json={"text": "I would work a small example by hand with 3 numbers, like 1 2 3"})
     r = c.post(f"/api/sessions/{sid}/submit", json={"code": BUGGY}).json()
     assert "```" not in r["explanation"]
     m = c.get("/api/stats", params={"learner": L}).json()["model"]
@@ -77,3 +79,10 @@ def test_model_calls_work_with_tracing_noop():
     assert c.rephrase_hint("s", "h", 1)
     from app import observability
     assert observability.init() is False  # no DSN in tests
+
+def test_submit_requires_viable_first_step():
+    c = mk()
+    sid = c.post("/api/sessions", json={"learner": L, "problem_id": "max-subarray"}).json()["session_id"]
+    assert c.post(f"/api/sessions/{sid}/submit", json={"code": "print(0)"}).status_code == 403
+    c.post(f"/api/sessions/{sid}/first-step", json={"text": "do it"})
+    assert c.post(f"/api/sessions/{sid}/submit", json={"code": "print(0)"}).status_code == 403
