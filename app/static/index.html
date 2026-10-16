@@ -180,7 +180,7 @@ $('stepBtn').onclick=async()=>{
     const t=$('stepText').value.trim(); if(!t) return;
     const r=await api(`/api/sessions/${sid}/first-step`,'POST',{text:t});
     $('stepOut').innerHTML=`<span class="${r.viable?'ok':'bad'}">${esc(r.feedback)}</span>`;
-    if(r.viable) $('codeBox').hidden=false;
+    $('codeBox').hidden=!r.viable;
   }catch(e){$('stepOut').textContent=e.message}
 };
 $('runBtn').onclick=async()=>{
