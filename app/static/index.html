@@ -17,7 +17,12 @@
   button.primary{background:var(--ac);color:#fff;border-color:var(--ac)}
   button:disabled{opacity:.5;cursor:default}
   textarea,select,input{font:inherit;width:100%;padding:8px;border-radius:8px;border:1px solid var(--bd);background:var(--card);color:var(--fg)}
-  textarea.code{font-family:ui-monospace,monospace;font-size:14px;min-height:220px}
+  textarea.code{
+    font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+    font-size:14px;line-height:1.45;min-height:260px;
+    tab-size:4;-moz-tab-size:4;
+    white-space:pre;overflow-wrap:normal;overflow-x:auto;
+  }
   pre{background:var(--code);padding:10px;border-radius:8px;overflow:auto;margin:6px 0}
   .row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
   .tag{font-size:.8rem;color:var(--mut)}.bad{color:var(--bad)}.ok{color:var(--ac)}
@@ -33,6 +38,9 @@
   .kpi b{display:block;font-size:1.3rem}
   .coach{border-left:4px solid var(--ac)}
   a.btn{display:inline-block;font:inherit;padding:8px 14px;border-radius:8px;background:var(--ac);color:#fff;text-decoration:none}
+  a{color:var(--ac);text-decoration:underline;text-underline-offset:2px}
+    a:hover{opacity:.85}
+    a.btn{color:#fff;text-decoration:none}
 </style>
 </head>
 <body>
@@ -92,6 +100,14 @@
 </main>
 <script>
 const $=id=>document.getElementById(id);
+// Tab key inserts spaces instead of moving focus
+$('code').addEventListener('keydown',function(e){
+  if(e.key!=='Tab')return;
+  e.preventDefault();
+  const t=e.target,s=t.selectionStart,end=t.selectionEnd;
+  t.value=t.value.slice(0,s)+'    '+t.value.slice(end);
+  t.selectionStart=t.selectionEnd=s+4;
+});
 let learner;
 try{learner=localStorage.getItem('fs_learner')}catch(e){}
 if(!learner){learner='l-'+Math.random().toString(36).slice(2,12);try{localStorage.setItem('fs_learner',learner)}catch(e){}}
