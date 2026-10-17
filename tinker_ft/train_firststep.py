@@ -21,7 +21,7 @@ import tinker
 from tinker import types
 
 ROOT = Path(__file__).resolve().parent.parent
-BASE_MODEL = os.environ.get("TINKER_MODEL", "Qwen/Qwen3-8B")  # change to a smaller model from the pricing page
+BASE_MODEL = os.environ.get("TINKER_MODEL", "nvidia/NVIDIA-Nemotron-3.5-Lightning-30B-A3B-BF16")
 EPOCHS, LR = 3, 1e-4
 LABELS = ["restate", "small_example", "brute_force", "observation", "too_vague"]
 
