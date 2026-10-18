@@ -2,7 +2,8 @@
 
 A practice tool for people who keep solving the same coding problems by memory and then freeze on anything new.
 
-**Live demo:** https://firststep-jtuf.onrender.com/  
+**Live demo:** https://hacktoberfeste6c4p8.tech  
+**Also on Render:** https://firststep-jtuf.onrender.com  
 **Repo:** https://github.com/meenanoolu/firststep
 
 Before you write any code you must state one concrete first move.  
@@ -200,5 +201,4 @@ Dockerfile
 - The transfer / “can you still solve a twist?” idea is sketched but not yet a full product feature.
 - One real user has tried it.
 - Local model path is slower on CPU (several seconds per first-step or explanation). Production demo uses the rule fallback for speed.
-
 
