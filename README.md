@@ -70,6 +70,34 @@ On Render the service runs with `LLM_PROVIDER=none` so demos stay fast and free.
 
 ---
 
+## Fine-tuning with Tinker (optional upgrade)
+
+The first-step classifier can be improved with a small LoRA fine-tune. Script and data:
+
+- `tinker_ft/train_firststep.py` — trains + evaluates
+- `data/firststep_train.jsonl` — 60 labelled examples
+- `data/firststep_test.jsonl` — 20 held-out examples
+
+**Results on the held-out set:**
+
+| Method | Accuracy | Viable accuracy | Latency (sec/call) |
+|--------|----------|-----------------|--------------------|
+| Base model (before fine-tune) | 0.20 | 0.45 | 7.22 |
+| **Tuned model (after Tinker LoRA)** | **0.55** | **0.80** | 7.11 |
+
+To re-run (needs a Tinker API key and credit):
+
+```bash
+pip install tinker
+# Windows PowerShell:
+$env:TINKER_API_KEY = "your_key"
+python -m tinker_ft.train_firststep
+```
+
+Production still defaults to the deterministic rules so the product never depends on the fine-tuned model.
+
+---
+
 ## Problems included
 
 Six free beginner problems (max-subarray style “Best stretch”, pair sum, brackets, longest run, range queries, etc.).  
@@ -170,6 +198,7 @@ Dockerfile
 
 - Only a handful of problems so far.
 - The transfer / “can you still solve a twist?” idea is sketched but not yet a full product feature.
-- One real user has tried it; that is not market proof.
+- One real user has tried it.
 - Local model path is slower on CPU (several seconds per first-step or explanation). Production demo uses the rule fallback for speed.
+
 
