@@ -3,8 +3,22 @@
 Task: classify a learner's first-step sentence into  
 `restate | small_example | brute_force | observation | too_vague`
 
-Data: `data/firststep_train.jsonl` (**250**) → train, `data/firststep_test.jsonl` (**50**) → eval  
 Method: LoRA SFT via [Tinker](https://tinker-docs.thinkingmachines.ai/)
+
+I ran the fine-tune **twice** (two separate experiments, not continued training).
+
+## Run 1 — pilot (small data)
+
+Data: 60 train / 20 held-out
+
+| Method | Accuracy | Viable accuracy | Latency (sec/call) |
+|--------|----------|-----------------|--------------------|
+| Base model (before fine-tune) | 0.20 | 0.45 | 7.22 |
+| **Tuned model (after Tinker LoRA)** | **0.55** | **0.80** | 7.11 |
+
+## Run 2 — main result (more data)
+
+Data: **250** train / **50** held-out (`data/firststep_train.jsonl`, `data/firststep_test.jsonl`)
 
 | Method | Accuracy | Viable accuracy | Latency (sec/call) |
 |--------|----------|-----------------|--------------------|
@@ -13,7 +27,9 @@ Method: LoRA SFT via [Tinker](https://tinker-docs.thinkingmachines.ai/)
 
 Accuracy +0.14; viable-vs-not +0.16; latency essentially unchanged.
 
-Reproduce:
+The **second run** is the main result (larger held-out set). Both times the tuned model beat the base model on the same task setup.
+
+Reproduce run 2:
 
 ```bash
 pip install tinker
