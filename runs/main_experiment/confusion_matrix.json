@@ -1,0 +1,37 @@
+{
+  "restate": {
+    "restate": 5,
+    "small_example": 0,
+    "brute_force": 0,
+    "observation": 0,
+    "too_vague": 5
+  },
+  "small_example": {
+    "restate": 0,
+    "small_example": 8,
+    "brute_force": 0,
+    "observation": 0,
+    "too_vague": 2
+  },
+  "brute_force": {
+    "restate": 0,
+    "small_example": 0,
+    "brute_force": 9,
+    "observation": 0,
+    "too_vague": 1
+  },
+  "observation": {
+    "restate": 0,
+    "small_example": 0,
+    "brute_force": 0,
+    "observation": 5,
+    "too_vague": 5
+  },
+  "too_vague": {
+    "restate": 0,
+    "small_example": 0,
+    "brute_force": 1,
+    "observation": 0,
+    "too_vague": 9
+  }
+}
