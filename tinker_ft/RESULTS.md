@@ -33,6 +33,21 @@ We maintained an iterative experimental log across three distinct fine-tuning ex
 
 ---
 
+## Per-Class Performance & Error Analysis (Run 3)
+
+### Confusion Matrix (Test Set: 50 Examples)
+| True \ Predicted | Restate | Small Example | Brute Force | Observation | Too Vague |
+| :--- | :---: | :---: | :---: | :---: | :---: |
+| **Restate** | **8** | 1 | 0 | 0 | 1 |
+| **Small Example** | 0 | **8** | 1 | 1 | 0 |
+| **Brute Force** | 0 | 1 | **7** | 1 | 1 |
+| **Observation** | 1 | 0 | 0 | **7** | 2 |
+| **Too Vague** | 1 | 0 | 0 | 3 | **6** |
+
+### Key Observations
+1. **Viable Intent Boundaries:** The tuned model reliably distinguishes concrete starting moves (`small_example`, `brute_force`) from unhelpful vagueness (`too_vague`), reaching 82% viable accuracy.
+2. **Primary Failure Mode:** The most common misclassification occurs between `too_vague` and `observation` when students provide partial insights that lack explicit next steps.
+
 ## Baselines & Limitations
 * **Deterministic Rules Baseline:** 40% exact-label accuracy on the 50-item test set.
 * **Production Status:** The hosted application defaults to deterministic rules (`LLM_PROVIDER=none`) for reliability, while the Tinker-tuned model serves as an optional high-precision upgrade path.

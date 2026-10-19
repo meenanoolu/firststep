@@ -85,6 +85,13 @@ I used [Tinker](https://tinker-docs.thinkingmachines.ai/) to fine-tune `Qwen/Qwe
 - **Rules Baseline:** 40% exact-label accuracy on the 50-item test set.
 - **Artifacts:** Full evaluation logs, confusion matrices, and metrics are stored under `runs/main_experiment/`.
 
+### 🔍 Inspect the Experiment Artifacts
+- 📜 **Training & Evaluation Script:** [`tinker_ft/train_firststep.py`](./tinker_ft/train_firststep.py)
+- 📊 **Full Experiment Log & Metrics:** [`tinker_ft/RESULTS.md`](./tinker_ft/RESULTS.md)
+- 🧪 **Dataset Audit Script:** [`scripts/audit_tinker_data.py`](./scripts/audit_tinker_data.py)
+- 💾 **Raw Prediction Outputs (JSONL):** [`runs/main_experiment/predictions.jsonl`](./runs/main_experiment/predictions.jsonl)
+- 🗂️ **Confusion Matrix (JSON):** [`runs/main_experiment/confusion_matrix.json`](./runs/main_experiment/confusion_matrix.json)
+
 ### Reproduce This Experiment
 ```bash
 git clone [https://github.com/your-username/firststep.git](https://github.com/your-username/firststep.git)
