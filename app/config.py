@@ -58,7 +58,7 @@ class Settings:
 
     llm_provider: str = field(default_factory=lambda: os.environ.get("LLM_PROVIDER", "none").lower())
     ollama_url: str = field(default_factory=lambda: os.environ.get("OLLAMA_URL", "http://localhost:11434"))
-    ollama_model: str = field(default_factory=lambda: os.environ.get("OLLAMA_MODEL", "gemma4:e4b"))
+    ollama_model: str = field(default_factory=lambda: os.environ.get("OLLAMA_MODEL", "gemma2:2b"))
     llm_base_url: str = field(default_factory=lambda: os.environ.get("LLM_BASE_URL", ""))
     llm_api_key: str = field(default_factory=lambda: os.environ.get("LLM_API_KEY", ""))
     llm_model: str = field(default_factory=lambda: os.environ.get("LLM_MODEL", ""))
