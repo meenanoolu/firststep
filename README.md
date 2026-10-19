@@ -73,20 +73,16 @@ On Render the service runs with `LLM_PROVIDER=none` so demos stay fast and free.
 
 ## Fine-tuning with Tinker (optional upgrade)
 
-The first-step classifier can be improved with a small LoRA fine-tune. Script and data:
+The first-step classifier was fine-tuned **twice** with Tinker (two separate LoRA runs).
 
-- `tinker_ft/train_firststep.py` — trains + evaluates
-- `data/firststep_train.jsonl` — 60 labelled examples
-- `data/firststep_test.jsonl` — 20 held-out examples
-
-**Results on the held-out set:**
+**Main result** (250 train / 50 held-out):
 
 | Method | Accuracy | Viable accuracy | Latency (sec/call) |
 |--------|----------|-----------------|--------------------|
-| Base model (before fine-tune) | 0.20 | 0.45 | 7.22 |
-| **Tuned model (after Tinker LoRA)** | **0.55** | **0.80** | 7.11 |
+| Base model (before fine-tune) | 0.56 | 0.64 | 2.07 |
+| **Tuned model (after Tinker LoRA)** | **0.70** | **0.80** | 2.15 |
 
-To re-run (needs a Tinker API key and credit):
+A smaller pilot (60/20) earlier showed 0.20 → 0.55 accuracy. Full write-up: [`tinker_ft/RESULTS.md`](tinker_ft/RESULTS.md).
 
 ```bash
 pip install tinker
