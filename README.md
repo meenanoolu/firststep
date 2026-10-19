@@ -71,27 +71,29 @@ On Render the service runs with `LLM_PROVIDER=none` so demos stay fast and free.
 
 ---
 
-## Fine-tuning with Tinker (optional upgrade)
+## 🤖 Tinker Fine-Tuning & Evaluation
 
-The first-step classifier was fine-tuned **twice** with Tinker (two separate LoRA runs).
+I used [Tinker](https://tinker-docs.thinkingmachines.ai/) to fine-tune `Qwen/Qwen3-8B` via LoRA for high-precision first-step intent classification.
 
-**Main result** (250 train / 50 held-out):
+### Results Summary
+| Run | Training Data | Test Data | Base Accuracy | Tuned Accuracy | Viable Accuracy |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+| **Run 1 (Pilot)** | 60 | 20 | 20% | 55% | 80% |
+| **Run 2 (Main)** | 250 | 50 | 56% | 70% | 80% |
+| **Run 3 (Live-Verified)** | 250 | 50 | 56% | **72%** | **82%** |
 
-| Method | Accuracy | Viable accuracy | Latency (sec/call) |
-|--------|----------|-----------------|--------------------|
-| Base model (before fine-tune) | 0.56 | 0.64 | 2.07 |
-| **Tuned model (after Tinker LoRA)** | **0.70** | **0.80** | 2.15 |
+- **Rules Baseline:** 40% exact-label accuracy on the 50-item test set.
+- **Artifacts:** Full evaluation logs, confusion matrices, and metrics are stored under `runs/main_experiment/`.
 
-A smaller pilot (60/20) earlier showed 0.20 → 0.55 accuracy. Full write-up: [`tinker_ft/RESULTS.md`](tinker_ft/RESULTS.md).
-
+### Reproduce This Experiment
 ```bash
+git clone [https://github.com/your-username/firststep.git](https://github.com/your-username/firststep.git)
+cd firststep
+pip install -r requirements.txt
 pip install tinker
-# Windows PowerShell:
-$env:TINKER_API_KEY = "your_key"
+export TINKER_API_KEY=your_api_key_here
 python -m tinker_ft.train_firststep
 ```
-
-Production still defaults to the deterministic rules so the product never depends on the fine-tuned model.
 
 ---
 
