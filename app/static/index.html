@@ -587,12 +587,15 @@ async function start(pid,review){
   $('hintBtn').disabled=false;$('runBtn').disabled=false;$('doneBtn').disabled=false;$('giveBtn').disabled=false;
 }
 $('stepBtn').onclick=async()=>{
+  const t=$('stepText').value.trim(); if(!t) return;
+  $('stepBtn').disabled=true;
+  $('stepOut').textContent='Checking your first step with the fine-tuned model… (a few seconds)';
   try{
-    const t=$('stepText').value.trim(); if(!t) return;
     const r=await api(`/api/sessions/${sid}/first-step`,'POST',{text:t});
     $('stepOut').innerHTML=`<span class="${r.viable?'ok':'bad'}">${esc(r.feedback)}</span> <small>${r.source==='model'?'· checked by the fine-tuned model (Qwen3-8B, Tinker)':'· checked by rules'}</small>`;
     $('codeBox').hidden=!r.viable;
   }catch(e){$('stepOut').textContent=e.message}
+  finally{$('stepBtn').disabled=false}
 };
 $('runBtn').onclick=async()=>{
   $('runBtn').disabled=true;$('result').innerHTML='Running...';
