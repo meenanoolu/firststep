@@ -31,6 +31,16 @@ We maintained an iterative experimental log across three distinct fine-tuning ex
 * **Purpose:** Re-executed the complete training and evaluation script live via the Tinker SDK to generate fresh prediction logs and test pipeline integrity.
 * **Outcome:** Reached **72% exact-label accuracy** and **82% viable-intent accuracy**, generating the prediction logs and confusion matrices stored in `runs/main_experiment/`.
 
+### Run 4: minibatch fine-tune (48 optimizer steps)
+Run 3 took only 4 optimizer steps, because each epoch was one full-batch update. Run 4 uses minibatches of 16 for 3 epochs (48 steps).
+
+| Test set | Rules | Base Qwen3-8B | Tuned Qwen3-8B |
+| :--- | :---: | :---: | :---: |
+| In-distribution (50, same 4 problems as training) | 40% | 56% | **100%** |
+| Unseen problems (40, balanced-brackets and range-sum-queries) | 40% | not run | **100%** (95% CI 91-100%) |
+
+Limits: both test sets are small. The unseen set was written by hand in a different style and is cleaner than real learner text. Next step: score real first steps collected by the live app.
+
 ---
 
 ## Per-Class Performance & Error Analysis (Run 3)
