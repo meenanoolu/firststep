@@ -190,10 +190,10 @@ Important env vars already set in the Blueprint:
 - `LLM_PROVIDER=tinker` (falls back to rules if `LLM_MODEL` or the key is missing)
 - concurrency and daily submit caps
 
-To run the Tinker model, set two secrets in the Render dashboard (the Blueprint already sets `LLM_PROVIDER=tinker` and `LLM_TIMEOUT_S=8`):
+To run the Tinker model, set two secrets in the Render dashboard (the Blueprint already sets `LLM_PROVIDER=tinker` and `LLM_TIMEOUT_S=15`):
 
 - `LLM_API_KEY` = your Tinker API key
-- `LLM_MODEL` = the `tinker://.../sampler_weights/...` path printed by `python -m tinker_ft.train_firststep` (or listed by `python -m tinker_ft.find_sampler_path`)
+- `LLM_MODEL` = the `tinker://.../sampler_weights/...` path printed by `python -m tinker_ft.train_firststep` (also saved in `runs/v2_minibatch/sampler_path.txt`)
 
 Leave `LLM_MODEL` empty and the service runs on rules alone. Note: a Render service with a disk does not get zero-downtime deploys, so a deploy causes a short restart.
 
