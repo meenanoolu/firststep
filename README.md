@@ -55,6 +55,7 @@ The tutor path is optional.
 | `LLM_PROVIDER=none` (default) | Rules + deterministic explanations only. No external calls. |
 | `LLM_PROVIDER=ollama` | Local Gemma (or any model you pull) via Ollama for first-step classification, hint rephrasing, and counterexample explanation. |
 | `LLM_PROVIDER=openai` | Any OpenAI-compatible endpoint (hosted open models). |
+| `LLM_PROVIDER=tinker` | **Production setting.** The LoRA-tuned Qwen3-8B first-step classifier, served by Tinker's OpenAI-compatible endpoint. It does one job (classify the first step). Hints and explanations stay static and leak-checked. |
 
 When the model is used, every reply is leak-checked. If the model fails or is unreachable the tool still works.
 
@@ -67,7 +68,7 @@ export OLLAMA_MODEL=gemma2:2b
 uvicorn app.main:app --reload
 ```
 
-On Render the service runs with `LLM_PROVIDER=none` so demos stay fast and free. Point a local Ollama instance at the same code when you want the model path.
+On Render the live service runs `LLM_PROVIDER=tinker`: each first-step sentence is classified by the fine-tuned model, with an 8 second timeout. On any error, timeout or unexpected output the deterministic rules answer instead, so the learner is never blocked. `/api/health` reports which backend is active and `/api/stats` shows how many model calls were accepted or fell back.
 
 ---
 
@@ -94,7 +95,7 @@ I used [Tinker](https://tinker-docs.thinkingmachines.ai/) to fine-tune `Qwen/Qwe
 
 ### Reproduce This Experiment
 ```bash
-git clone [https://github.com/your-username/firststep.git](https://github.com/your-username/firststep.git)
+git clone https://github.com/meenanoolu/firststep.git
 cd firststep
 pip install -r requirements.txt
 pip install tinker
@@ -174,7 +175,12 @@ Important env vars already set in the Blueprint:
 - `LLM_PROVIDER=none` (safe default)
 - concurrency and daily submit caps
 
-To attach a hosted open model later, set `LLM_PROVIDER=openai`, `LLM_BASE_URL`, `LLM_API_KEY`, and `LLM_MODEL` in the Render dashboard.
+To run the Tinker model, set two secrets in the Render dashboard (the Blueprint already sets `LLM_PROVIDER=tinker` and `LLM_TIMEOUT_S=8`):
+
+- `LLM_API_KEY` = your Tinker API key
+- `LLM_MODEL` = the `tinker://.../sampler_weights/...` path printed by `python -m tinker_ft.train_firststep` (or listed by `python -m tinker_ft.find_sampler_path`)
+
+Leave `LLM_MODEL` empty and the service runs on rules alone. Note: a Render service with a disk does not get zero-downtime deploys, so a deploy causes a short restart.
 
 ---
 
@@ -206,4 +212,3 @@ Dockerfile
 - The transfer / “can you still solve a twist?” idea is sketched but not yet a full product feature.
 - One real user has tried it.
 - Local model path is slower on CPU (several seconds per first-step or explanation). Production demo uses the rule fallback for speed.
-
