@@ -4,6 +4,8 @@ that (counterexample finder, leak check). If no model is configured every job re
 deterministic fallbacks are used, so the app works with LLM_PROVIDER=none."""
 from __future__ import annotations
 
+import os
+
 import httpx
 
 from . import observability
@@ -77,6 +79,48 @@ class OpenAICompatClient(ChatClient):
         return r.json()["choices"][0]["message"]["content"]
 
 
+# ---- Tinker: the fine-tuned first-step classifier --------------------------------------------------------
+TINKER_BASE_URL = "https://tinker.thinkingmachines.dev/services/tinker-prod/oai/api/v1"
+TINKER_LABELS = ("restate", "small_example", "brute_force", "observation", "too_vague")
+
+
+def tinker_prompt(statement: str, text: str) -> str:
+    """MUST stay byte-identical to prompt() in tinker_ft/train_firststep.py. The model was fine-tuned on this
+    raw text format, not on a chat template, so it is queried through /completions, never /chat/completions."""
+    return (f"Problem: {statement}\n"
+            f"Learner's first step: {text}\n"
+            f"Classify as one of {', '.join(TINKER_LABELS)}.\n"
+            f"Label:")
+
+
+class TinkerClient(ChatClient):
+    """The LoRA-tuned Qwen3-8B sampler checkpoint, served by Tinker's OpenAI-compatible endpoint.
+    It is a classifier, so it does exactly one job. Hint rewording and counterexample explanations return None,
+    which makes the app use its static, leak-checked text instead."""
+    name = "tinker"
+    model_label = "qwen3-8b-firststep-lora"
+
+    def __init__(self, api_key: str, model: str, base_url: str = TINKER_BASE_URL, timeout: float = 8.0):
+        self.key, self.model, self.base, self.timeout = api_key, model, base_url.rstrip("/"), timeout
+
+    def judge_first_step(self, statement: str, text: str) -> str | None:
+        with observability.llm_span("judge_first_step", self.name, self.model_label):
+            r = httpx.post(f"{self.base}/completions", timeout=self.timeout,
+                           headers={"Authorization": f"Bearer {self.key}"},
+                           json={"model": self.model, "prompt": tinker_prompt(statement, text),
+                                 "max_tokens": 6, "temperature": 0})
+            r.raise_for_status()
+            out = (r.json()["choices"][0].get("text") or "").strip()
+        word = out.split()[0].strip(".,:;\"'").lower() if out else ""
+        return word or None
+
+    def rephrase_hint(self, statement: str, hint: str, level: int) -> str | None:
+        return None
+
+    def explain_counterexample(self, statement: str, inp: str, expected: str, got: str) -> str | None:
+        return None
+
+
 class FakeClient(ChatClient):
     """For tests: canned replies."""
     name = "fake"
@@ -93,4 +137,8 @@ def get_client(s: Settings) -> ChatClient | None:
         return OllamaClient(s.ollama_url, s.ollama_model)
     if s.llm_provider == "openai" and s.llm_base_url and s.llm_model:
         return OpenAICompatClient(s.llm_base_url, s.llm_api_key, s.llm_model)
+    if s.llm_provider == "tinker" and s.llm_model:
+        key = s.llm_api_key or os.environ.get("TINKER_API_KEY", "")
+        if key:
+            return TinkerClient(key, s.llm_model, s.llm_base_url or TINKER_BASE_URL, s.llm_timeout_s)
     return None
