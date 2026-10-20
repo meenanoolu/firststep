@@ -16,12 +16,12 @@ services:
       - key: MAX_SUBMITS_PER_DAY
         value: "60"
       - key: LLM_PROVIDER
-        value: none           # public demo stays model-free
-      - key: LLM_BASE_URL
-        sync: false
+        value: tinker         # first-step checks go to the fine-tuned Qwen3-8B on Tinker; rules are the fallback
+      - key: LLM_TIMEOUT_S
+        value: "8"            # past this the request falls back to rules, so the learner never waits on the model
       - key: LLM_API_KEY
-        sync: false
+        sync: false           # secret: your Tinker API key, set in the Render dashboard only
       - key: LLM_MODEL
-        sync: false
+        sync: false           # the tinker://.../sampler_weights/... path printed by tinker_ft/train_firststep.py
       - key: PRO_CODES
         sync: false           # set JUDGE-DEMO-2026 in Render dashboard
