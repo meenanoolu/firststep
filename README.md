@@ -74,33 +74,48 @@ On Render the live service runs `LLM_PROVIDER=tinker`: each first-step sentence 
 
 ## 🤖 Tinker Fine-Tuning & Evaluation
 
-I used [Tinker](https://tinker-docs.thinkingmachines.ai/) to fine-tune `Qwen/Qwen3-8B` via LoRA for high-precision first-step intent classification.
+I used [Tinker](https://tinker-docs.thinkingmachines.ai/) to fine-tune `Qwen/Qwen3-8B` (LoRA, rank 16) to classify a learner's first step into `restate | small_example | brute_force | observation | too_vague`. The tuned model runs live in the deployed app; deterministic rules are the fallback.
 
-### Results Summary
-| Run | Training Data | Test Data | Base Accuracy | Tuned Accuracy | Viable Accuracy |
-| :--- | :--- | :--- | :--- | :--- | :--- |
-| **Run 1 (Pilot)** | 60 | 20 | 20% | 55% | 80% |
-| **Run 2 (Main)** | 250 | 50 | 56% | 70% | 80% |
-| **Run 3 (Live-Verified)** | 250 | 50 | 56% | **72%** | **82%** |
+### Results
+| Run | Training | Test | Rules | Base model | Tuned model | Viable accuracy |
+| :--- | :--- | :--- | :---: | :---: | :---: | :---: |
+| 1 (pilot) | 60 | 20 | n/a | 20% | 55% | 80% |
+| 2 | 250 | 50 | 40% | 56% | 70% | 80% |
+| 3 | 250 | 50 | 40% | 56% | 72% | 82% |
+| **4 (live model)** | 250 | 50 | 40% | 56% | **100%** | **100%** |
 
-- **Rules Baseline:** 40% exact-label accuracy on the 50-item test set.
-- **Artifacts:** Full evaluation logs, confusion matrices, and metrics are stored under `runs/main_experiment/`.
+**What changed in Run 4:** Runs 1-3 made one optimizer step per epoch (4 steps in total). Run 4 uses minibatches of 16 for 3 epochs (48 steps).
 
-### 🔍 Inspect the Experiment Artifacts
-- 📜 **Training & Evaluation Script:** [`tinker_ft/train_firststep.py`](./tinker_ft/train_firststep.py)
-- 📊 **Full Experiment Log & Metrics:** [`tinker_ft/RESULTS.md`](./tinker_ft/RESULTS.md)
-- 🧪 **Dataset Audit Script:** [`scripts/audit_tinker_data.py`](./scripts/audit_tinker_data.py)
-- 💾 **Raw Prediction Outputs (JSONL):** [`runs/main_experiment/predictions.jsonl`](./runs/main_experiment/predictions.jsonl)
-- 🗂️ **Confusion Matrix (JSON):** [`runs/main_experiment/confusion_matrix.json`](./runs/main_experiment/confusion_matrix.json)
+**Unseen problems:** the Run 4 checkpoint scored **40/40 (95% CI 91-100%)** on `data/firststep_unseen.jsonl`, written for two problems that never appear in training (`balanced-brackets`, `range-sum-queries`). Rules score 16/40 (40%) on the same file.
 
-### Reproduce This Experiment
+**Limits.** Both test sets are small and hand-written, and the unseen set is cleaner than real learner text. Treat these numbers as evidence that the approach works, not a final accuracy. Next step: score real first steps collected by the live app.
+
+### How the model is used in production
+- Render calls the saved sampler checkpoint through Tinker's OpenAI-compatible `/completions` endpoint, using the exact prompt format it was trained on (`LLM_PROVIDER=tinker`).
+- The model only classifies. Hints and counterexample explanations stay static and leak-checked.
+- Any timeout, error or unexpected output falls back to the rules, so a learner is never blocked. Tinker's endpoint is in beta and meant for low traffic, which is why the fallback matters.
+- `/api/health` shows the active backend and `/api/stats` shows accepted vs fallback model calls.
+
+### Inspect the experiment artifacts
+- [`tinker_ft/train_firststep.py`](./tinker_ft/train_firststep.py): training and evaluation
+- [`tinker_ft/eval_checkpoint.py`](./tinker_ft/eval_checkpoint.py): score a saved checkpoint on any labelled file
+- [`tinker_ft/RESULTS.md`](./tinker_ft/RESULTS.md): full experiment log
+- [`runs/v2_minibatch/`](./runs/v2_minibatch/): Run 4 metrics, predictions, confusion matrix
+- [`runs/main_experiment/`](./runs/main_experiment/): Run 3 records
+- [`scripts/audit_tinker_data.py`](./scripts/audit_tinker_data.py): dataset audit
+- [`data/`](./data/): train, test and unseen-problem sets
+
+### Reproduce
 ```bash
 git clone https://github.com/meenanoolu/firststep.git
 cd firststep
 pip install -r requirements.txt
 pip install tinker
 export TINKER_API_KEY=your_api_key_here
-python -m tinker_ft.train_firststep
+python -m tinker_ft.train_firststep        # trains, evaluates, prints the tinker:// sampler path
+
+export TINKER_SAMPLER_PATH=tinker://...    # the path printed above
+python -m tinker_ft.eval_checkpoint data/firststep_unseen.jsonl
 ```
 
 ---
@@ -172,7 +187,7 @@ The repo contains `render.yaml`. Create a Blueprint from the GitHub repo (or con
 Important env vars already set in the Blueprint:
 
 - `DB_PATH=/data/firststep.db`
-- `LLM_PROVIDER=none` (safe default)
+- `LLM_PROVIDER=tinker` (falls back to rules if `LLM_MODEL` or the key is missing)
 - concurrency and daily submit caps
 
 To run the Tinker model, set two secrets in the Render dashboard (the Blueprint already sets `LLM_PROVIDER=tinker` and `LLM_TIMEOUT_S=8`):
