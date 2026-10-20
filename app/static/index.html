@@ -590,7 +590,7 @@ $('stepBtn').onclick=async()=>{
   try{
     const t=$('stepText').value.trim(); if(!t) return;
     const r=await api(`/api/sessions/${sid}/first-step`,'POST',{text:t});
-    $('stepOut').innerHTML=`<span class="${r.viable?'ok':'bad'}">${esc(r.feedback)}</span>`;
+    $('stepOut').innerHTML=`<span class="${r.viable?'ok':'bad'}">${esc(r.feedback)}</span> <small>${r.source==='model'?'· checked by the fine-tuned model (Qwen3-8B, Tinker)':'· checked by rules'}</small>`;
     $('codeBox').hidden=!r.viable;
   }catch(e){$('stepOut').textContent=e.message}
 };
