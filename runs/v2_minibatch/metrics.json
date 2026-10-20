@@ -1,0 +1,27 @@
+{
+  "timestamp": "2026-10-20 09:17:53 UTC",
+  "config": {
+    "base_model": "Qwen/Qwen3-8B",
+    "epochs": 3,
+    "batch_size": 16,
+    "optimizer_steps": 48,
+    "learning_rate": 0.0001,
+    "rank": 16,
+    "train_size": 250,
+    "test_size": 50
+  },
+  "base_metrics": {
+    "split": "base",
+    "acc": 0.56,
+    "viable_acc": 0.64,
+    "sec_per_call": 7.0927,
+    "n": 50
+  },
+  "tuned_metrics": {
+    "split": "tuned",
+    "acc": 1.0,
+    "viable_acc": 1.0,
+    "sec_per_call": 7.03,
+    "n": 50
+  }
+}
