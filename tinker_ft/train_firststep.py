@@ -12,6 +12,7 @@ from __future__ import annotations
 import asyncio
 import json
 import os
+import random
 import time
 from pathlib import Path
 
@@ -20,7 +21,10 @@ from tinker import types
 
 ROOT = Path(__file__).resolve().parent.parent
 BASE_MODEL = os.environ.get("TINKER_MODEL", "Qwen/Qwen3-8B")
-EPOCHS = int(os.environ.get("TINKER_EPOCHS", "4"))
+EPOCHS = int(os.environ.get("TINKER_EPOCHS", "3"))
+BATCH = int(os.environ.get("TINKER_BATCH", "16"))      # minibatches: many optimizer steps, not one per epoch
+RUN_NAME = os.environ.get("TINKER_RUN_NAME", "v2_minibatch")   # keeps earlier runs/ results untouched
+SAMPLER_NAME = os.environ.get("TINKER_SAMPLER_NAME", "firststep_qwen3_8b_v2")
 LR = float(os.environ.get("TINKER_LR", "1e-4"))
 RANK = int(os.environ.get("TINKER_RANK", "16"))
 LABELS = ["restate", "small_example", "brute_force", "observation", "too_vague"]
@@ -95,7 +99,7 @@ async def main() -> None:
     train, test = rows("firststep_train.jsonl"), rows("firststep_test.jsonl")
     print(f"train={len(train)} test={len(test)} model={BASE_MODEL} epochs={EPOCHS} rank={RANK}")
 
-    output_dir = ROOT / "runs" / "main_experiment"
+    output_dir = ROOT / "runs" / RUN_NAME
     output_dir.mkdir(parents=True, exist_ok=True)
 
     svc = tinker.ServiceClient()
@@ -121,12 +125,17 @@ async def main() -> None:
             )
         )
 
+    rng = random.Random(0)
+    steps = 0
     for ep in range(EPOCHS):
-        fb = await tc.forward_backward_async(data=data, loss_fn="cross_entropy")
-        await fb.result_async()
-        op = await tc.optim_step_async(types.AdamParams(learning_rate=LR))
-        await op.result_async()
-        print(f"epoch {ep + 1}/{EPOCHS} done")
+        rng.shuffle(data)
+        for i in range(0, len(data), BATCH):
+            fb = await tc.forward_backward_async(data=data[i:i + BATCH], loss_fn="cross_entropy")
+            op = await tc.optim_step_async(types.AdamParams(learning_rate=LR))
+            await fb.result_async()
+            await op.result_async()
+            steps += 1
+        print(f"epoch {ep + 1}/{EPOCHS} done ({steps} optimizer steps so far)")
 
     tuned = tc.save_weights_and_get_sampling_client(name="tuned")
     tuned_m, tuned_preds, tuned_cm = await evaluate(tuned, tok, test, "tuned")
@@ -137,6 +146,8 @@ async def main() -> None:
         "config": {
             "base_model": BASE_MODEL,
             "epochs": EPOCHS,
+            "batch_size": BATCH,
+            "optimizer_steps": steps,
             "learning_rate": LR,
             "rank": RANK,
             "train_size": len(train),
@@ -155,6 +166,16 @@ async def main() -> None:
 
     with open(output_dir / "confusion_matrix.json", "w", encoding="utf-8") as f:
         json.dump(tuned_cm, f, indent=2)
+
+    # Persistent checkpoint for production. Render calls it through Tinker's OpenAI-compatible endpoint.
+    sampler_path = (await tc.save_weights_for_sampler(name=SAMPLER_NAME).result_async()).path
+    try:  # make sure it never expires (a TTL would silently break the live app later)
+        rest = svc.create_rest_client()
+        await rest.set_checkpoint_ttl_from_tinker_path_async(sampler_path, ttl_seconds=None)
+    except Exception as e:
+        print("could not clear TTL (check it in the Tinker console):", e)
+    (output_dir / "sampler_path.txt").write_text(sampler_path + "\n")
+    print(f"\nTinker sampler path (put this in Render as LLM_MODEL):\n{sampler_path}")
 
     print(f"\nSaved full run records, predictions, and confusion matrix to {output_dir}")
 
