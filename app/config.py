@@ -62,6 +62,7 @@ class Settings:
     llm_base_url: str = field(default_factory=lambda: os.environ.get("LLM_BASE_URL", ""))
     llm_api_key: str = field(default_factory=lambda: os.environ.get("LLM_API_KEY", ""))
     llm_model: str = field(default_factory=lambda: os.environ.get("LLM_MODEL", ""))
+    llm_timeout_s: float = field(default_factory=lambda: float(os.environ.get("LLM_TIMEOUT_S", "8")))
 
 
 def get_settings() -> Settings:
